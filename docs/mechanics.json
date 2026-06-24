@@ -1,0 +1,173 @@
+{
+  "meditation": "放置打坐機制（核心放置層，前期要快有感）：\n\n進入打坐狀態後，每秒自動累積靈氣，公式：\nqiPerSec = realm.idlePerSec（見 realms 陣列，依當前境界查表）\n每秒結算：qi += qiPerSec * (1 + meditationBuff)，meditationBuff 預設 0，可由洞天福地/陣法加成。\n\n掛機回收（離線收益）：離線時間 offlineSec = (now - lastSaveTime)/1000，上限 8 小時（28800 秒）。\n離線靈氣 = qiPerSec * min(offlineSec, 28800) * 0.6（離線效率 60%，鼓勵但不取代在線）。\n回上線時跳「閉關 N 小時，獲得 X 靈氣」彈窗。\n\n前期手感設計：第 0 境界 idlePerSec=5，突破成本 100，即 20 秒第一次突破、有感；第 1→2 約 1-2 分鐘；中期才拉長到數十分鐘需配合戰鬥/丹藥。\n打坐 UI：點「打坐」進入冥想動畫，靈氣條即時跳動，攢滿突破門檻時境界圖示發光提示「可突破」。打坐期間仍可離開去戰鬥，靈氣照算（在線全速）。",
+  "realms": [
+    {
+      "index": 0,
+      "breakthroughCost": 100,
+      "successRate": 1,
+      "idlePerSec": 5,
+      "atk": 10,
+      "hp": 100
+    },
+    {
+      "index": 1,
+      "breakthroughCost": 800,
+      "successRate": 0.95,
+      "idlePerSec": 18,
+      "atk": 22,
+      "hp": 260
+    },
+    {
+      "index": 2,
+      "breakthroughCost": 6000,
+      "successRate": 0.9,
+      "idlePerSec": 65,
+      "atk": 50,
+      "hp": 680
+    },
+    {
+      "index": 3,
+      "breakthroughCost": 42000,
+      "successRate": 0.85,
+      "idlePerSec": 230,
+      "atk": 115,
+      "hp": 1750
+    },
+    {
+      "index": 4,
+      "breakthroughCost": 300000,
+      "successRate": 0.78,
+      "idlePerSec": 820,
+      "atk": 265,
+      "hp": 4500
+    },
+    {
+      "index": 5,
+      "breakthroughCost": 2100000,
+      "successRate": 0.7,
+      "idlePerSec": 2900,
+      "atk": 610,
+      "hp": 11500
+    },
+    {
+      "index": 6,
+      "breakthroughCost": 15000000,
+      "successRate": 0.62,
+      "idlePerSec": 10300,
+      "atk": 1400,
+      "hp": 29000
+    },
+    {
+      "index": 7,
+      "breakthroughCost": 110000000,
+      "successRate": 0.55,
+      "idlePerSec": 36500,
+      "atk": 3200,
+      "hp": 74000
+    },
+    {
+      "index": 8,
+      "breakthroughCost": 800000000,
+      "successRate": 0.48,
+      "idlePerSec": 130000,
+      "atk": 7400,
+      "hp": 190000
+    },
+    {
+      "index": 9,
+      "breakthroughCost": 6000000000,
+      "successRate": 0.4,
+      "idlePerSec": 460000,
+      "atk": 17000,
+      "hp": 480000
+    }
+  ],
+  "combat": {
+    "style": "2.5D 等角即時動作戰鬥（類暗黑簡化版）：玩家用左下虛擬搖桿八方向自由走位，靠近妖物自動或點攻擊鈕觸發普攻，右下三技能鈕施放消耗靈氣的技能。整體手感目標：移動跟手無延遲、普攻有頓挫感與受擊閃白、技能有短暫滯空與擊退、怪物被打會後仰。地圖為等角斜 45 度俯視，畫布固定 60FPS，碰撞用圓形半徑判定不用精細多邊形保證流暢。打完一波清場結算靈石，爽快不卡頓的關鍵：普攻冷卻短、移動速度夠快、技能 CD 適中讓玩家頻繁施放。",
+    "moveSpeed": 220,
+    "attackRange": 70,
+    "attackCooldownMs": 450,
+    "expPerKillRule": "擊殺單一妖物得經驗 expGain = round(8 * pow(1.5, enemyRealm)) ，enemyRealm 為該怪所屬境界階。例如 0 階雜魚給 8 經驗，3 階給 27。精英怪 x5、Boss x20。",
+    "levelUpRule": "經驗直接轉為靈氣注入（戰鬥=加速打坐的主力）：每點經驗換算 qiGain = exp * (1 + playerRealm*0.15)，戰鬥所得靈氣與打坐共用同一靈氣池，一起推進突破。另每累積 currentRealm 的 breakthroughCost*0.5 經驗，永久 +2% atk（戰鬥熟練度），上限 +50%。",
+    "enemyHpScaling": "enemyHp = 60 * pow(2.6, enemyRealm) * eliteMult；eliteMult 雜魚1 / 精英6 / Boss25。怪物境界階 enemyRealm 依地圖區域設定，建議比玩家當前境界 -1 ~ +1 浮動。",
+    "enemyAtkScaling": "enemyAtk = 6 * pow(2.4, enemyRealm) * eliteMult，eliteMult 同上。對玩家造成傷害 dmg = max(1, enemyAtk - playerDef)，playerDef 預設 = playerRealm*8。",
+    "skills": [
+      {
+        "name": "御劍斬",
+        "qiCost": 15,
+        "cooldownMs": 1200,
+        "dmgMult": 2.2,
+        "desc": "向面朝方向射出劍氣，直線穿透命中路徑上所有妖物，單體 2.2 倍 atk 傷害，清雜魚主力。"
+      },
+      {
+        "name": "五雷轟頂",
+        "qiCost": 40,
+        "cooldownMs": 4000,
+        "dmgMult": 3.5,
+        "desc": "在搖桿瞄準點召落天雷，範圍 120 像素內全體 3.5 倍 atk 傷害＋0.5 秒麻痺，打人堆與精英用。"
+      },
+      {
+        "name": "太虛劍陣",
+        "qiCost": 90,
+        "cooldownMs": 11000,
+        "dmgMult": 6,
+        "desc": "以玩家為中心展開劍陣，2 秒內對範圍內敵人造成 6 倍 atk 總傷害（分 6 段每段 1 倍），大招清場/打 Boss。"
+      },
+      {
+        "name": "縮地成寸",
+        "qiCost": 25,
+        "cooldownMs": 3000,
+        "dmgMult": 0,
+        "desc": "朝搖桿方向瞬移 200 像素並對沿途敵人造成 1 倍 atk＋免疫受擊，位移保命與切入用。"
+      }
+    ],
+    "rewardSpiritStone": "擊殺得靈石 stoneGain = round(3 * pow(1.7, enemyRealm)) * eliteMult（雜魚x1/精英x6/BossX25）。整波清場額外結算 clearBonus = 該波怪物總靈石 * 0.2 通關獎勵。每張地圖每日前 3 次清場給雙倍靈石鼓勵每日上線。"
+  },
+  "controls": {
+    "mobileLayout": "預設手機直式（portrait）。畫面由上到下三區：頂部狀態列（境界名＋靈氣條＋HP條＋靈石/經驗數，高約 12vh）；中間戰鬥畫布 canvas（佔約 62vh，等角地圖）；底部操控與功能列（佔約 26vh，左下搖桿、右下技能鈕，最底一排分頁按鈕：打坐/戰鬥/煉丹/拍賣/背包）。橫式（landscape）時搖桿與技能鈕移到畫布左右兩側懸浮、狀態列縮成頂部細條，畫布滿版。用 CSS 媒體查詢 orientation 切換 layout。",
+    "joystick": "左下角虛擬搖桿：固定式底盤半徑 60px、搖桿頭 28px。touchstart 落在左半屏即啟動，拖曳向量 = 觸點 - 底盤中心，正規化後乘 moveSpeed 給角色速度。死區 deadZone = 12px（向量長度 < 12px 視為不動，避免手抖漂移）。拖出底盤半徑則夾在邊緣（clamp 到 60px）。touchend 搖桿頭彈回中心（回中），角色立刻停。八方向或全方向皆可（建議全方向 360 度更滑順）。",
+    "buttons": "右下角：1 個大普攻鈕（直徑 88px，最靠拇指）＋3 個技能鈕（各 64px，弧形排列在普攻鈕左上）。每個技能鈕：靈氣不足變灰、冷卻中蓋一層由滿到空的扇形遮罩（conic-gradient 動畫）並顯示剩餘秒數。按鈕間距 ≥ 12px 避免誤觸。攻擊/技能鈕用 touchstart 觸發（不等 touchend）求反應快。長按普攻鈕＝連續普攻。",
+    "responsive": "同一份網頁自適應：HTML 加 <meta name=viewport content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no'> 鎖縮放。canvas 用邏輯解析度（如 720x1280）繪製，再用 CSS 等比縮放填滿容器（object-fit 概念，算 scale = min(螢幕寬/720, 螢幕高/1280)）保持比例不變形，並乘 devicePixelRatio 讓高解析手機不糊。事件同時綁 touch 與 mouse：桌機用 WASD/方向鍵或滑鼠拖曳代替搖桿、滑鼠左鍵普攻、QWE 鍵放技能；用 pointer events（pointerdown/move/up）可一套程式同時吃觸控與滑鼠。偵測 'ontouchstart' in window 決定顯示虛擬搖桿或隱藏（桌機隱藏搖桿改鍵盤提示）。"
+  },
+  "alchemy": {
+    "rarityTiers": [
+      {
+        "tier": 1,
+        "chance": 0.5,
+        "effectMult": 1
+      },
+      {
+        "tier": 2,
+        "chance": 0.28,
+        "effectMult": 1.5
+      },
+      {
+        "tier": 3,
+        "chance": 0.15,
+        "effectMult": 2.5
+      },
+      {
+        "tier": 4,
+        "chance": 0.06,
+        "effectMult": 4
+      },
+      {
+        "tier": 5,
+        "chance": 0.01,
+        "effectMult": 8
+      }
+    ],
+    "refineTimeRule": "煉丹耗時 refineSec = round(30 * pow(2.2, pillTier - 1))，pillTier 為丹方階級(1~6)。即 1 階丹 30 秒、2 階 66 秒、3 階約 145 秒、4 階約 320 秒、5 階約 700 秒、6 階約 1550 秒(約 26 分)。可花靈石加速：每秒加速費 spiritStone = ceil(剩餘秒數 * 0.5)。同時最多 1 爐（解鎖第二爐需道具）。",
+    "pillGainRule": "吃丹增修為(靈氣) gainQi = pill.baseValue * rarityTiers[tier].effectMult。各階丹方基值 baseValue：1階=120、2階=900、3階=6500、4階=46000、5階=330000、6階=2400000(約對應該境界突破成本的一小段，吃丹是輔助加速突破而非主力)。範例：煉出 3 階丹且抽中 tier4(x4.0)=46000*... 用 3 階基值 6500*4.0=26000 靈氣。稀有度在煉成瞬間以 rarityTiers 機率擲骰決定，5 種結果同丹方共用，抽中高階是驚喜。",
+    "unlockRule": "丹方依境界解鎖：境界 0-1 解鎖 1 階丹方(聚氣丹)；境界 2 解鎖 2 階(凝神丹)；境界 3 解鎖 3 階(築基丹)；境界 4-5 解鎖 4 階(金丹)；境界 6-7 解鎖 5 階(元嬰丹)；境界 8-9 解鎖 6 階(化神丹)。煉丹需消耗靈草材料(打怪/奇遇掉)：每爐固定吃對應階草藥 x3，材料不足不能開爐。"
+  },
+  "auction": {
+    "entryFee": 50,
+    "treasuresPerDay": 5,
+    "startBidRule": "每件珍寶有隱藏真實價值 trueValue（依稀有度：普通 800 / 稀有 5000 / 史詩 35000 / 傳說 250000 靈石，每日 5 件按權重隨機抽：普通45%/稀有35%/史詩15%/傳說5%）。起標價 startBid = round(trueValue * 0.3)。玩家與 NPC 輪流出價，每次加價至少 minIncrement。",
+    "npcBidderLogic": "每件珍寶生成 npcCount = 隨機 3~5 名 NPC 競標者。每名 NPC 有隱藏出價上限 npcCap = trueValue * random(0.7, 1.05)（即約真實價值的 70%~105%，彼此不同）。流程：系統與玩家輪流喊價，輪到 NPC 時，若當前最高價 < 自己的 npcCap，則加價 newBid = currentBid + currentBid * random(0.05, 0.12)（加 5%~12%，且不超過自己 npcCap，超過就只喊到 npcCap）；若當前價 ≥ 自己 npcCap 則該 NPC 退出（永久不再回頭）。每輪 NPC 還有 exitChance = 0.08 機率提前心態退出（避免無限拉鋸）。當所有 NPC 都退出，剩玩家最高即得標。關鍵：玩家只要出價略高於『當前最高 NPC 的 npcCap』就能拿下，最壞情況約 trueValue*1.05，買得起、且懂得讓 NPC 互抬後再一口價可省靈石——有技巧但不勸退。minIncrement = max(round(currentBid*0.05), 10)。",
+    "cooldown": "每日 0:00（Asia/Taipei）刷新當天 5 件珍寶與所有 NPC。入場費每日首次進入收 50 靈石，當天反覆進出不重複收。未得標不退入場費。每件珍寶限一次競標回合，流標(無人出價高於起標)則該珍寶當日消失。"
+  },
+  "spiritStone": "靈石(貨幣)與靈氣(修為資源)嚴格區分：\n\n靈氣 qi：唯一用途＝累積後突破境界（打坐每秒給、戰鬥經驗轉換給、吃丹給）。是「修為進度條」，不可交易、不可買東西。\n\n靈石 spiritStone：硬通貨，用途＝煉丹加速、拍賣競標、開第二丹爐、未來商城。三大來源：\n1. 打怪/清場：stoneGain = round(3 * pow(1.7, enemyRealm)) * eliteMult，每日前 3 次清場雙倍。\n2. 奇遇事件：戰鬥地圖隨機刷寶箱/事件(觸發率約每場 10%)，給 round(50 * pow(1.8, playerRealm)) 靈石，偶爾給靈草或丹方碎片。\n3. 賣丹：把煉出的丹拿到坊市賣，sellPrice = pill.baseValue * rarityTier.effectMult * 0.15（換算成靈石，約修為價值的 15%）。讓玩家在「吃丹衝修為」與「賣丹換靈石競標」間做取捨。\n\n設計目的：靈氣管成長、靈石管選擇與經濟，兩條資源線各自循環又透過丹藥/拍賣交叉。",
+  "designNotes": "主循環：打坐(放置攢靈氣，前期 20 秒就能首破，給即時正回饋) → 突破境界(成功率隨境界遞減、失敗損失 40% 已存靈氣製造緊張感與重玩價值) → 戰鬥地圖(用搖桿走位＋普攻＋3 技能清妖，掉經驗轉靈氣加速突破、掉靈石、掉靈草材料、10% 奇遇給大筆靈石) → 煉丹房(用靈草煉丹，越高階等越久，5 種稀有度抽獎式驚喜，吃丹補一段靈氣加速卡關的突破) → 每日拍賣行(用打怪賣丹攢的靈石競標珍寶，鬥智壓 NPC 上限撿便宜)。\n\n三層節奏：放置層(掛機/離線收益，被動)＋動作層(主動戰鬥，爽快手感與技巧)＋經濟層(丹藥與拍賣，策略取捨)。前期靠打坐快速突破讓新手 5 分鐘內升 3-4 境上癮；中期突破成本指數成長(每境 x6~x10)，純掛機太慢，逼玩家進戰鬥與煉丹加速，自然把三個系統串起來；後期突破成功率下探至 40%，丹藥(穩定加靈氣墊高存量)與拍賣珍寶(永久屬性加成、提升清怪效率)成為衝關關鍵。\n\n平衡要點：1)靈氣只進突破、靈石只進經濟，兩池不互換避免崩盤(只有賣丹是單向丹→靈石的閥門)。2)戰鬥經驗轉靈氣的係數(1+realm*0.15)讓高境界戰鬥不至於完全跟不上指數突破，但仍需丹藥補。3)拍賣 NPC 上限封頂 trueValue*1.05 確保玩家永遠買得起，靠讓 NPC 互抬的技巧省靈石增加深度。4)離線收益 60% 效率＋8 小時上限，鼓勵上線但不懲罰上班族 Riley 這類玩家。全部數值已查表化(realms/rarityTiers/skills 陣列)可直接寫進 JS config。"
+}
