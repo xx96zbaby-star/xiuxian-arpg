@@ -6,1588 +6,1609 @@
 </head>
 <body>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<!-- ============================================================
+  散修崛起：斬妖煉天訣 v2.0
+  單一自包含網頁遊戲 body 片段（無外部資源，全 Canvas/CSS/emoji）
+  重點實作：
+   1. 可探索 2.5D 等角大地圖（相機跟隨、遊蕩怪、寶箱、NPC、傳送點、5 區解鎖）
+   2. 歷練沉浸 session（切頁=暫停不結束、境界/修為單調不倒退、死亡溫和懲罰）
+   3. 全場景化（打坐/煉丹/拍賣/奇遇/背包 都用 2.5D 畫面，非文字卡）
+   4. 上癮回饋（頓挫/閃白/震屏/飄字/稀有金光/連擊連殺/每日任務/登入/里程碑）
+   5. 帥氣修仙劍客（Canvas 畫道袍、髮髻、飛劍、靈氣光環）
+  ============================================================ -->
 <style>
-/* ====== 全域基礎樣式 ====== */
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;}
+/* ===== 全域變數（區域主題色用 CSS 變數，省資源） ===== */
 #xx-root{
-  /* 整個遊戲的容器：直式手機優先，最大寬度 760 置中 */
-  width:100%;max-width:760px;margin:0 auto;
-  font-family:"Microsoft JhengHei","PingFang TC","Segoe UI",sans-serif;
-  color:#fff;position:relative;
-  background:transparent;
-  display:flex;flex-direction:column;
-  height:100vh;max-height:900px;overflow:hidden;
-  border-radius:18px;
+  --c-bg:#0d0b14; --c-panel:#171221; --c-panel2:#221a33; --c-line:#3a2f52;
+  --c-gold:#f5d27a; --c-gold2:#e0a93b; --c-qi:#5fe0c8; --c-hp:#ff5a6a;
+  --c-text:#ece6f7; --c-sub:#9a8fb5; --c-pur:#9d6fe0; --c-good:#6ee787; --c-bad:#ff6b6b;
+  position:relative; width:100%; max-width:540px; margin:0 auto;
+  height:88vh; max-height:880px; min-height:560px;
+  background:var(--c-bg); color:var(--c-text);
+  font-family:"Microsoft JhengHei","PingFang TC","Noto Sans CJK TC",system-ui,sans-serif;
+  border-radius:18px; overflow:hidden; box-shadow:0 14px 50px rgba(0,0,0,.6);
+  user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent;
+  touch-action:none;
 }
-/* ====== 頂部狀態列 ====== */
-#xx-status{
-  flex:0 0 auto;padding:8px 10px;
-  background:linear-gradient(135deg,#3a2a5e,#5b3a82);
-  border-radius:18px 18px 0 0;
-  box-shadow:0 2px 10px rgba(0,0,0,.3);
-}
-.xx-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
-.xx-realm-badge{
-  font-weight:800;font-size:15px;padding:3px 10px;border-radius:12px;
-  background:linear-gradient(135deg,#ffd86b,#ff9d3c);color:#5a2d00;
-  box-shadow:0 2px 6px rgba(255,160,40,.5);white-space:nowrap;
-}
-.xx-lv{font-size:12px;background:rgba(255,255,255,.15);padding:2px 8px;border-radius:10px;}
-.xx-bar{flex:1;height:13px;border-radius:8px;background:rgba(0,0,0,.35);overflow:hidden;position:relative;}
-.xx-bar>i{display:block;height:100%;width:0;border-radius:8px;transition:width .25s;}
-.xx-bar .qi-fill{background:linear-gradient(90deg,#5fe6ff,#3f9dff);}
-.xx-bar .hp-fill{background:linear-gradient(90deg,#ff6b8a,#ff3c5e);}
-.xx-bar .exp-fill{background:linear-gradient(90deg,#b3ff6b,#6bd43c);}
-.xx-bar>span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;text-shadow:0 1px 2px #000;}
-.xx-label{font-size:11px;width:30px;opacity:.85;}
-.xx-stats{display:flex;gap:8px;font-size:11px;flex-wrap:wrap;}
-.xx-stats b{color:#ffe08a;}
-.xx-stone{color:#7fffd4;font-weight:700;}
-/* ====== 中間主畫面 ====== */
-#xx-main{flex:1 1 auto;position:relative;overflow:hidden;background:#0f0a1e;}
-.xx-page{position:absolute;inset:0;overflow-y:auto;padding:12px;display:none;}
-.xx-page.active{display:block;}
-#xx-page-battle.active{display:block;padding:0;}
-/* 戰鬥畫布容器 */
-#xx-canvas-wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#241a40,#0d0820);}
-#xx-canvas{touch-action:none;display:block;}
-/* ====== 卡片通用 ====== */
-.card{
-  background:linear-gradient(135deg,#2a2148,#3a2a5e);
-  border-radius:16px;padding:14px;margin-bottom:12px;
-  box-shadow:0 4px 14px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);
-}
-.card h3{font-size:16px;margin-bottom:8px;color:#ffd86b;}
-.card p{font-size:13px;line-height:1.6;opacity:.9;}
-.btn{
-  display:inline-block;padding:10px 18px;border-radius:12px;border:none;
-  font-size:14px;font-weight:800;cursor:pointer;color:#fff;
-  background:linear-gradient(135deg,#7a5cff,#9d6bff);
-  box-shadow:0 4px 10px rgba(120,90,255,.4);transition:transform .1s;
-}
-.btn:active{transform:scale(.95);}
-.btn.gold{background:linear-gradient(135deg,#ffce47,#ff9d3c);color:#5a2d00;box-shadow:0 4px 10px rgba(255,160,40,.4);}
-.btn.green{background:linear-gradient(135deg,#4fd97a,#2fb85e);}
-.btn.red{background:linear-gradient(135deg,#ff6b6b,#e23c3c);}
-.btn:disabled{opacity:.4;filter:grayscale(.6);cursor:not-allowed;}
-.btn.small{padding:6px 12px;font-size:12px;}
-/* ====== 打坐動畫 ====== */
-#xx-meditate-stage{text-align:center;padding:20px 0;position:relative;}
-.medi-char{font-size:90px;display:inline-block;filter:drop-shadow(0 8px 12px rgba(0,0,0,.5));animation:floaty 3s ease-in-out infinite;position:relative;z-index:2;}
-@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-.medi-aura{position:absolute;left:50%;top:50px;width:160px;height:160px;margin-left:-80px;border-radius:50%;
-  background:radial-gradient(circle,rgba(95,230,255,.5),transparent 70%);animation:pulse 2s ease-in-out infinite;z-index:1;}
-@keyframes pulse{0%,100%{transform:scale(.8);opacity:.5}50%{transform:scale(1.3);opacity:.9}}
-.medi-on .medi-aura{animation:pulse 1s ease-in-out infinite;}
-.qi-float{position:absolute;font-size:13px;color:#7fffd4;font-weight:800;pointer-events:none;animation:qiup 1.2s ease-out forwards;text-shadow:0 1px 3px #000;}
-@keyframes qiup{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-50px)}}
-/* ====== 搖桿 + 按鈕（戰鬥操控） ====== */
-#xx-controls{flex:0 0 auto;height:150px;position:relative;background:linear-gradient(0deg,#241836,#1a1228);border-top:1px solid rgba(255,255,255,.06);display:none;}
-#xx-controls.show{display:block;}
-#xx-joy{position:absolute;left:18px;bottom:18px;width:120px;height:120px;border-radius:50%;
-  background:radial-gradient(circle,rgba(255,255,255,.08),rgba(255,255,255,.02));border:2px solid rgba(255,255,255,.12);}
-#xx-joy-knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;
-  background:radial-gradient(circle at 35% 30%,#bda4ff,#7a5cff);box-shadow:0 4px 10px rgba(0,0,0,.5);transition:transform .05s;}
-#xx-skills{position:absolute;right:14px;bottom:14px;width:200px;height:130px;}
-.skbtn{position:absolute;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  font-size:11px;font-weight:800;color:#fff;text-align:center;border:2px solid rgba(255,255,255,.2);overflow:hidden;cursor:pointer;text-shadow:0 1px 2px #000;}
-#sk-atk{right:0;bottom:0;width:88px;height:88px;background:radial-gradient(circle at 35% 30%,#ff8a5c,#e23c3c);box-shadow:0 4px 12px rgba(226,60,60,.5);font-size:13px;}
-#sk-1{right:92px;bottom:6px;width:60px;height:60px;background:radial-gradient(circle at 35% 30%,#5f9dff,#3f6dff);}
-#sk-2{right:78px;bottom:70px;width:60px;height:60px;background:radial-gradient(circle at 35% 30%,#c45fff,#8a3fff);}
-#sk-3{right:6px;bottom:96px;width:56px;height:56px;background:radial-gradient(circle at 35% 30%,#ffd35f,#ff9d3c);color:#5a2d00;}
-.skbtn .cd-mask{position:absolute;inset:0;pointer-events:none;border-radius:50%;}
-.skbtn .cd-txt{position:absolute;font-size:16px;font-weight:900;pointer-events:none;}
-.skbtn.dim{filter:grayscale(.7) brightness(.6);}
-.skbtn .nm{line-height:1.1;}
-.skbtn .qc{font-size:9px;opacity:.85;}
-/* ====== 底部分頁 ====== */
-#xx-tabs{flex:0 0 auto;display:flex;background:#1a1228;border-top:1px solid rgba(255,255,255,.08);border-radius:0 0 18px 18px;}
-.xx-tab{flex:1;text-align:center;padding:8px 2px 9px;font-size:11px;cursor:pointer;color:#9a8fc0;transition:.15s;}
-.xx-tab .ic{font-size:21px;display:block;line-height:1.2;}
-.xx-tab.active{color:#ffd86b;background:rgba(255,255,255,.05);}
-.xx-tab.active .ic{filter:drop-shadow(0 0 6px rgba(255,210,90,.8));}
-.xx-tab.glow{animation:tabglow 1s ease-in-out infinite;}
-@keyframes tabglow{0%,100%{color:#ffd86b}50%{color:#fff}}
-/* ====== 列表 / 物品格 ====== */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px;}
-.slot{aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  font-size:11px;padding:4px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,.1);position:relative;}
-.slot .em{font-size:26px;line-height:1;}
-.slot .nm{font-size:9px;margin-top:2px;line-height:1.1;}
-.r1{background:linear-gradient(135deg,#4a4a4a,#6a6a6a);}
-.r2{background:linear-gradient(135deg,#2f7a3f,#4fc06a);}
-.r3{background:linear-gradient(135deg,#2f5fa0,#4f9dff);}
-.r4{background:linear-gradient(135deg,#7a3fb0,#b46bff);box-shadow:0 0 8px rgba(180,107,255,.6);}
-.r5{background:linear-gradient(135deg,#b0852f,#ffce47);box-shadow:0 0 12px rgba(255,206,71,.8);animation:rare 1.5s infinite;}
-@keyframes rare{0%,100%{box-shadow:0 0 12px rgba(255,206,71,.7)}50%{box-shadow:0 0 22px rgba(255,206,71,1)}}
-.qty{position:absolute;right:3px;bottom:2px;font-size:10px;font-weight:800;background:rgba(0,0,0,.5);padding:0 4px;border-radius:6px;}
-/* ====== 進度條（煉丹） ====== */
-.prog{height:18px;border-radius:9px;background:rgba(0,0,0,.4);overflow:hidden;margin:8px 0;}
-.prog>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff9d3c,#ffd86b);transition:width .3s linear;}
-/* ====== 彈窗 ====== */
-#xx-modal{position:absolute;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
-#xx-modal.show{display:flex;}
-.modal-box{background:linear-gradient(135deg,#332452,#46306e);border-radius:20px;padding:22px;max-width:340px;width:100%;text-align:center;
-  border:2px solid rgba(255,210,90,.4);box-shadow:0 10px 40px rgba(0,0,0,.6);animation:popin .3s;}
-@keyframes popin{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
-.modal-box h2{color:#ffd86b;margin-bottom:10px;font-size:20px;}
-.modal-box .big-em{font-size:60px;margin:8px 0;animation:floaty 2s infinite;}
-.modal-box p{font-size:14px;line-height:1.7;margin-bottom:14px;opacity:.95;}
-/* ====== Toast 提示 ====== */
-#xx-toast{position:absolute;top:90px;left:50%;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:90%;}
-.toast{background:rgba(20,12,40,.92);border:1px solid rgba(255,210,90,.5);border-radius:12px;padding:8px 16px;font-size:13px;font-weight:700;
-  animation:toastin .3s,toastout .4s 1.8s forwards;box-shadow:0 4px 14px rgba(0,0,0,.4);max-width:100%;}
-@keyframes toastin{0%{transform:translateY(-12px);opacity:0}100%{transform:translateY(0);opacity:1}}
-@keyframes toastout{100%{opacity:0;transform:translateY(-12px)}}
-/* 金光升級全屏特效 */
-#xx-flash{position:absolute;inset:0;z-index:55;pointer-events:none;display:none;background:radial-gradient(circle,rgba(255,220,100,.85),transparent 65%);}
-#xx-flash.show{display:block;animation:flashk .9s ease-out;}
-@keyframes flashk{0%{opacity:0;transform:scale(.4)}30%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
-/* 拍賣 NPC 喊價列 */
-.bidlog{max-height:120px;overflow-y:auto;font-size:12px;background:rgba(0,0,0,.25);border-radius:10px;padding:8px;margin:8px 0;line-height:1.7;}
-.bidlog .me{color:#7fffd4;font-weight:700;}
-.bidlog .npc{color:#ffb3c8;}
-.bidlog .sys{color:#ffd86b;}
-.intro-scroll{font-size:13px;line-height:1.8;background:rgba(0,0,0,.2);border-radius:12px;padding:12px;margin-bottom:10px;font-style:italic;color:#e8d8ff;}
-.tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.15);margin-left:4px;}
-.flex-wrap{display:flex;gap:8px;flex-wrap:wrap;}
-@media (max-width:380px){.medi-char{font-size:72px}}
+#xx-root *{box-sizing:border-box;}
+#xx-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;}
+
+/* ===== 頂部狀態列 ===== */
+#xx-top{position:absolute;top:0;left:0;right:0;z-index:20;padding:8px 12px;
+  background:linear-gradient(180deg,rgba(13,11,20,.92),rgba(13,11,20,.0));
+  pointer-events:none;}
+#xx-top .row{display:flex;align-items:center;gap:8px;pointer-events:auto;}
+#xx-realm{font-weight:800;font-size:15px;color:var(--c-gold);text-shadow:0 1px 4px #000;
+  white-space:nowrap;}
+#xx-area{font-size:11px;color:var(--c-sub);margin-left:auto;background:rgba(0,0,0,.35);
+  padding:2px 8px;border-radius:10px;}
+.xx-bar{height:9px;border-radius:6px;background:#2a2238;overflow:hidden;flex:1;
+  border:1px solid rgba(255,255,255,.06);position:relative;}
+.xx-bar>i{display:block;height:100%;width:0;transition:width .18s linear;}
+#xx-qibar>i{background:linear-gradient(90deg,#2fb6a0,#7df0da);box-shadow:0 0 8px var(--c-qi);}
+#xx-hpbar>i{background:linear-gradient(90deg,#c0394a,#ff7a86);}
+.xx-bar .lab{position:absolute;inset:0;font-size:9px;line-height:9px;text-align:center;
+  color:#fff;text-shadow:0 1px 2px #000;font-weight:700;letter-spacing:.3px;}
+#xx-stones{font-size:12px;color:var(--c-gold);font-weight:700;white-space:nowrap;}
+.xx-mini{display:flex;gap:6px;align-items:center;margin-top:5px;}
+
+/* 小地圖 */
+#xx-minimap{position:absolute;top:8px;right:10px;width:74px;height:74px;z-index:21;
+  border-radius:10px;border:1px solid var(--c-line);background:rgba(0,0,0,.5);display:none;}
+#xx-root.in-explore #xx-minimap{display:block;}
+
+/* ===== 底部分頁列 ===== */
+#xx-tabs{position:absolute;bottom:0;left:0;right:0;z-index:30;display:flex;
+  background:linear-gradient(0deg,rgba(13,11,20,.97),rgba(13,11,20,.82));
+  border-top:1px solid var(--c-line);}
+#xx-tabs button{flex:1;border:0;background:none;color:var(--c-sub);
+  padding:8px 2px 9px;font-size:11px;font-weight:700;cursor:pointer;line-height:1.3;
+  transition:color .15s;font-family:inherit;}
+#xx-tabs button .ic{font-size:18px;display:block;margin-bottom:1px;}
+#xx-tabs button.on{color:var(--c-gold);}
+#xx-tabs button.on .ic{filter:drop-shadow(0 0 6px var(--c-gold2));}
+/* 探索中隱藏分頁列（沉浸），用回洞府鈕退出 */
+#xx-root.in-explore #xx-tabs{display:none;}
+
+/* ===== 場景面板（覆蓋在 canvas 上的 HTML UI 層） ===== */
+.xx-scene{position:absolute;left:0;right:0;top:0;bottom:46px;z-index:15;
+  display:none;flex-direction:column;padding:64px 14px 10px;overflow:hidden;}
+.xx-scene.on{display:flex;}
+.xx-scene h2{margin:0 0 4px;font-size:16px;color:var(--c-gold);text-shadow:0 1px 4px #000;}
+.xx-scene .hint{font-size:11px;color:var(--c-sub);margin-bottom:8px;}
+
+/* 通用按鈕 */
+.xx-btn{background:linear-gradient(180deg,var(--c-panel2),var(--c-panel));
+  border:1px solid var(--c-line);color:var(--c-text);border-radius:10px;
+  padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;
+  transition:transform .08s,box-shadow .15s;}
+.xx-btn:active{transform:scale(.95);}
+.xx-btn.gold{background:linear-gradient(180deg,#f7d77e,#e0a93b);color:#3a2400;border-color:#f0c668;
+  box-shadow:0 0 14px rgba(224,169,59,.45);}
+.xx-btn.big{padding:13px 18px;font-size:15px;width:100%;}
+.xx-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* ===== 探索 HUD（搖桿、技能鈕、回洞府） ===== */
+#xx-explore-ui{position:absolute;inset:0;z-index:18;display:none;pointer-events:none;}
+#xx-root.in-explore #xx-explore-ui{display:block;}
+#xx-joy{position:absolute;left:18px;bottom:24px;width:118px;height:118px;border-radius:50%;
+  background:radial-gradient(circle,rgba(157,111,224,.14),rgba(0,0,0,.28));
+  border:1px solid rgba(157,111,224,.35);pointer-events:auto;}
+#xx-joy .stick{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px;
+  border-radius:50%;background:radial-gradient(circle at 35% 30%,#b78cf0,#6a47a8);
+  box-shadow:0 3px 10px rgba(0,0,0,.5),inset 0 2px 6px rgba(255,255,255,.3);}
+#xx-skills{position:absolute;right:14px;bottom:18px;width:182px;height:182px;pointer-events:none;}
+.xx-skill{position:absolute;border-radius:50%;pointer-events:auto;border:2px solid rgba(255,255,255,.18);
+  display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;
+  color:#fff;background:radial-gradient(circle at 35% 30%,#3a2f52,#1a1428);overflow:hidden;
+  text-shadow:0 1px 3px #000;cursor:pointer;}
+.xx-skill .nm{position:absolute;bottom:3px;font-size:8px;font-weight:700;color:#cbb8ee;}
+.xx-skill .cd{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:conic-gradient(rgba(0,0,0,.66) var(--cd,0deg), rgba(0,0,0,0) 0);}
+.xx-skill .cdt{position:absolute;font-size:14px;font-weight:800;color:#fff;}
+.xx-skill.dim{filter:grayscale(.7) brightness(.55);}
+#xx-atk{right:10px;bottom:64px;width:92px;height:92px;font-size:30px;
+  background:radial-gradient(circle at 35% 30%,#e0a93b,#9c5a12);border-color:#f0c668;}
+#xx-s0{right:104px;bottom:64px;width:60px;height:60px;}
+#xx-s1{right:36px;bottom:140px;width:60px;height:60px;}
+#xx-s2{right:104px;bottom:138px;width:60px;height:60px;}
+#xx-s3{right:14px;bottom:8px;width:54px;height:54px;font-size:18px;}
+
+#xx-home-btn{position:absolute;top:60px;right:10px;z-index:22;pointer-events:auto;
+  background:rgba(20,15,30,.85);border:1px solid var(--c-line);color:var(--c-gold);
+  border-radius:10px;padding:7px 11px;font-size:12px;font-weight:700;cursor:pointer;
+  display:none;font-family:inherit;}
+#xx-root.in-explore #xx-home-btn{display:block;}
+
+#xx-interact{position:absolute;left:50%;bottom:160px;transform:translateX(-50%);z-index:22;
+  pointer-events:auto;display:none;background:linear-gradient(180deg,#f7d77e,#e0a93b);
+  color:#3a2400;border:0;border-radius:24px;padding:11px 22px;font-size:14px;font-weight:800;
+  box-shadow:0 0 18px rgba(224,169,59,.6);cursor:pointer;animation:xxpulse 1s infinite;
+  font-family:inherit;}
+@keyframes xxpulse{0%,100%{transform:translateX(-50%) scale(1);}50%{transform:translateX(-50%) scale(1.07);}}
+
+/* ===== 通用彈窗 ===== */
+#xx-modal{position:absolute;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+  background:rgba(5,3,10,.72);backdrop-filter:blur(2px);padding:20px;}
+#xx-modal.on{display:flex;}
+.xx-card{background:linear-gradient(180deg,var(--c-panel2),var(--c-panel));
+  border:1px solid var(--c-gold2);border-radius:16px;padding:20px 18px;max-width:340px;width:100%;
+  box-shadow:0 0 40px rgba(224,169,59,.3);text-align:center;}
+.xx-card h3{margin:0 0 8px;color:var(--c-gold);font-size:17px;}
+.xx-card p{margin:0 0 14px;font-size:13px;line-height:1.6;color:var(--c-text);}
+.xx-card .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+
+/* ===== 飄字層 ===== */
+#xx-float{position:absolute;inset:0;z-index:40;pointer-events:none;overflow:hidden;}
+.xx-fl{position:absolute;font-weight:800;text-shadow:0 2px 4px #000;
+  animation:xxfloat 1s ease-out forwards;white-space:nowrap;}
+@keyframes xxfloat{0%{opacity:0;transform:translate(-50%,0) scale(.6);}
+  18%{opacity:1;transform:translate(-50%,-14px) scale(1.1);}
+  100%{opacity:0;transform:translate(-50%,-46px) scale(1);}}
+.xx-banner{position:absolute;left:50%;top:34%;transform:translateX(-50%);z-index:45;
+  font-size:30px;font-weight:900;color:var(--c-gold);text-shadow:0 0 18px var(--c-gold2),0 3px 6px #000;
+  animation:xxbanner 1.4s ease-out forwards;pointer-events:none;white-space:nowrap;letter-spacing:2px;}
+@keyframes xxbanner{0%{opacity:0;transform:translateX(-50%) scale(.4);}
+  20%{opacity:1;transform:translateX(-50%) scale(1.15);}
+  75%{opacity:1;transform:translateX(-50%) scale(1);}
+  100%{opacity:0;transform:translateX(-50%) scale(1.1);}}
+#xx-combo{position:absolute;right:14px;top:40%;z-index:42;text-align:right;display:none;
+  pointer-events:none;}
+#xx-combo .n{font-size:38px;font-weight:900;color:#ffd86b;
+  text-shadow:0 0 16px #e0a93b,0 3px 6px #000;line-height:1;}
+#xx-combo .t{font-size:13px;font-weight:800;color:#fff;text-shadow:0 2px 4px #000;}
+
+/* 死亡灰化遮罩 */
+#xx-death{position:absolute;inset:0;z-index:50;display:none;pointer-events:none;
+  background:radial-gradient(circle,rgba(80,0,0,.0) 30%,rgba(60,0,0,.6) 100%);}
+#xx-death.on{display:block;pointer-events:auto;}
+
+/* 場景內格狀/列表 */
+.xx-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;overflow-y:auto;flex:1;
+  padding-right:2px;}
+.xx-slot{background:var(--c-panel);border:1px solid var(--c-line);border-radius:10px;
+  aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;cursor:pointer;font-size:24px;}
+.xx-slot .qn{position:absolute;right:3px;bottom:2px;font-size:10px;font-weight:800;color:#fff;
+  text-shadow:0 1px 2px #000;}
+.xx-slot .nm{font-size:8px;color:var(--c-sub);margin-top:2px;text-align:center;line-height:1.1;}
+.r1{border-color:#5a5a6a;} .r2{border-color:#4a7fd0;box-shadow:0 0 7px rgba(74,127,208,.4);}
+.r3{border-color:#9d6fe0;box-shadow:0 0 9px rgba(157,111,224,.5);}
+.r4{border-color:#f5d27a;box-shadow:0 0 12px rgba(245,210,122,.6);}
+.r5{border-color:#ff8a3c;box-shadow:0 0 16px rgba(255,138,60,.75);}
+
+.xx-list{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;}
+.xx-row{background:var(--c-panel);border:1px solid var(--c-line);border-radius:10px;
+  padding:10px 12px;display:flex;align-items:center;gap:10px;}
+.xx-row .ico{font-size:24px;}
+.xx-row .info{flex:1;min-width:0;}
+.xx-row .info b{font-size:13px;color:var(--c-text);display:block;}
+.xx-row .info span{font-size:10px;color:var(--c-sub);display:block;line-height:1.3;}
+
+.xx-tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:8px;font-weight:700;}
+.xx-scroll{overflow-y:auto;flex:1;}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-thumb{background:#3a2f52;border-radius:4px;}
+
+.xx-area-card{background:var(--c-panel);border:1px solid var(--c-line);border-radius:12px;
+  padding:12px;margin-bottom:9px;cursor:pointer;position:relative;overflow:hidden;}
+.xx-area-card.lock{opacity:.5;}
+.xx-area-card b{font-size:14px;}
+.xx-area-card .d{font-size:10px;color:var(--c-sub);margin:3px 0 6px;}
+.xx-area-card .pb{height:6px;background:#2a2238;border-radius:4px;overflow:hidden;}
+.xx-area-card .pb>i{display:block;height:100%;background:linear-gradient(90deg,#e0a93b,#f5d27a);}
+
+@media (max-height:620px){.xx-scene{padding-top:58px;}}
 </style>
 
 <div id="xx-root">
-  <!-- 頂部狀態列 -->
-  <div id="xx-status">
-    <div class="xx-row">
-      <span class="xx-realm-badge" id="ui-realm">煉氣境</span>
-      <span class="xx-lv" id="ui-lv">Lv.1</span>
-      <span class="xx-stone">🪙 <b id="ui-stone">0</b></span>
+  <canvas id="xx-canvas"></canvas>
+  <canvas id="xx-minimap" width="74" height="74"></canvas>
+
+  <!-- 頂部狀態 -->
+  <div id="xx-top">
+    <div class="row">
+      <span id="xx-realm">煉氣境</span>
+      <span id="xx-area">洞府</span>
     </div>
-    <div class="xx-row"><span class="xx-label">靈氣</span><div class="xx-bar"><i class="qi-fill" id="ui-qi-fill"></i><span id="ui-qi-txt">0/100</span></div></div>
-    <div class="xx-row"><span class="xx-label">血量</span><div class="xx-bar"><i class="hp-fill" id="ui-hp-fill"></i><span id="ui-hp-txt">100/100</span></div></div>
-    <div class="xx-row xx-stats">
-      <span>⚔️攻 <b id="ui-atk">10</b></span>
-      <span>🛡️防 <b id="ui-def">0</b></span>
-      <span>📜經驗 <b id="ui-exp">0</b></span>
-      <span>🏆斬妖 <b id="ui-kills">0</b></span>
+    <div class="xx-mini">
+      <div class="xx-bar" id="xx-qibar"><i></i><span class="lab" id="xx-qilab">0 / 100</span></div>
+    </div>
+    <div class="xx-mini">
+      <div class="xx-bar" id="xx-hpbar"><i style="width:100%"></i><span class="lab" id="xx-hplab">100/100</span></div>
+      <span id="xx-stones">💎 0</span>
     </div>
   </div>
 
-  <!-- 中間主畫面 -->
-  <div id="xx-main">
-    <!-- 打坐頁 -->
-    <div class="xx-page active" id="xx-page-meditate">
-      <div class="card" style="text-align:center">
-        <h3>🧘 打坐吐納</h3>
-        <div id="xx-meditate-stage" class="medi-on">
-          <div class="medi-aura"></div>
-          <div class="medi-char">🧘‍♂️</div>
-        </div>
-        <p id="medi-rate">每秒回靈氣 +5</p>
-        <p style="margin-top:8px;font-size:12px;opacity:.7" id="medi-realm-desc"></p>
-        <div style="margin-top:12px">
-          <button class="btn" id="btn-medi-toggle">暫停打坐</button>
-        </div>
-      </div>
-      <div class="card" style="text-align:center">
-        <h3>⚡ 境界突破</h3>
-        <p id="bt-info">距離突破還需更多靈氣</p>
-        <div style="margin-top:10px">
-          <button class="btn gold" id="btn-breakthrough">突破境界</button>
-        </div>
-        <p style="margin-top:8px;font-size:12px;opacity:.7" id="bt-rate"></p>
-      </div>
-      <div class="card">
-        <h3>📖 散修崛起：斬妖煉天訣</h3>
-        <p style="font-size:12px" id="world-intro"></p>
-      </div>
-    </div>
+  <!-- 飄字 / 連擊 / 橫幅 層 -->
+  <div id="xx-float"></div>
+  <div id="xx-combo"><div class="n">0</div><div class="t">COMBO</div></div>
 
-    <!-- 戰鬥頁 -->
-    <div class="xx-page" id="xx-page-battle">
-      <div id="xx-canvas-wrap"><canvas id="xx-canvas" width="720" height="900"></canvas></div>
+  <!-- ===== 場景：洞府 HOME ===== -->
+  <div class="xx-scene" id="sc-home">
+    <h2>🏔️ 洞府</h2>
+    <div class="hint">道友，今日打算做點什麼？（最下方分頁可隨時切換）</div>
+    <div class="xx-scroll" style="display:flex;flex-direction:column;gap:9px;">
+      <button class="xx-btn gold big" data-go="meditate">🧘 打坐修煉（攢靈氣突破）</button>
+      <button class="xx-btn big" data-go="explore-menu">⚔️ 出洞歷練（探索打怪）</button>
+      <button class="xx-btn big" data-go="alchemy">⚗️ 進丹房煉丹</button>
+      <button class="xx-btn big" data-go="auction">🏛️ 逛拍賣行</button>
+      <button class="xx-btn big" data-go="quests">📜 每日任務 / 登入</button>
+      <div id="xx-daily-tip" style="font-size:11px;color:var(--c-sub);margin-top:4px;"></div>
     </div>
-
-    <!-- 奇遇頁 -->
-    <div class="xx-page" id="xx-page-event">
-      <div class="card" style="text-align:center">
-        <h3>🌫️ 雲遊奇遇</h3>
-        <p>遊歷天地，總有際遇。每次外出耗少許心神，福禍自負。</p>
-        <div style="margin-top:12px"><button class="btn green" id="btn-event">外出遊歷 🎲</button></div>
-      </div>
-      <div id="event-result"></div>
-    </div>
-
-    <!-- 煉丹頁 -->
-    <div class="xx-page" id="xx-page-alchemy">
-      <div class="card">
-        <h3>⚗️ 煉丹房</h3>
-        <p style="font-size:12px">靈草：<span id="herb-list"></span></p>
-        <div class="prog" id="furnace-prog" style="display:none"><i></i></div>
-        <p id="furnace-txt" style="font-size:12px;display:none"></p>
-        <div style="margin-top:8px" id="furnace-actions"></div>
-      </div>
-      <div id="recipe-list"></div>
-    </div>
-
-    <!-- 拍賣頁 -->
-    <div class="xx-page" id="xx-page-auction">
-      <div class="card">
-        <h3>🔨 萬寶閣拍賣行</h3>
-        <p style="font-size:12px" id="auction-status">每日付 50 靈石入場，5 件珍寶輪番上拍。</p>
-        <div style="margin-top:10px" id="auction-enter-wrap"><button class="btn gold" id="btn-auction-enter">入場 (50 靈石)</button></div>
-      </div>
-      <div id="auction-stage" style="display:none"></div>
-    </div>
-
-    <!-- 背包頁 -->
-    <div class="xx-page" id="xx-page-bag">
-      <div class="card">
-        <h3>🎒 背包 · 丹藥</h3>
-        <div class="grid" id="bag-pills"></div>
-      </div>
-      <div class="card">
-        <h3>💎 珍寶 · 法寶（永久加成）</h3>
-        <div class="grid" id="bag-treasures"></div>
-      </div>
-      <div class="card">
-        <h3>🌿 靈草材料</h3>
-        <div class="grid" id="bag-herbs"></div>
-      </div>
-    </div>
-
-    <!-- 戰鬥操控（搖桿+技能） -->
-    <div id="xx-controls">
-      <div id="xx-joy"><div id="xx-joy-knob"></div></div>
-      <div id="xx-skills">
-        <div class="skbtn" id="sk-atk"><span class="nm">普攻</span></div>
-        <div class="skbtn" id="sk-1"><span class="nm">御劍斬</span><span class="qc">15</span><div class="cd-mask"></div><span class="cd-txt"></span></div>
-        <div class="skbtn" id="sk-2"><span class="nm">五雷</span><span class="qc">40</span><div class="cd-mask"></div><span class="cd-txt"></span></div>
-        <div class="skbtn" id="sk-3"><span class="nm">劍陣</span><span class="qc">90</span><div class="cd-mask"></div><span class="cd-txt"></span></div>
-      </div>
-    </div>
-
-    <!-- 彈窗 / 特效 / 提示 -->
-    <div id="xx-modal"><div class="modal-box" id="modal-box"></div></div>
-    <div id="xx-flash"></div>
-    <div id="xx-toast"></div>
   </div>
 
-  <!-- 底部分頁 -->
+  <!-- ===== 場景：打坐 MEDITATE ===== -->
+  <div class="xx-scene" id="sc-meditate" style="background:none;justify-content:flex-end;">
+    <div style="text-align:center;margin-bottom:8px;">
+      <div id="xx-med-info" style="font-size:12px;color:var(--c-qi);text-shadow:0 1px 4px #000;"></div>
+    </div>
+    <button class="xx-btn gold big" id="xx-breakthrough" disabled>靈氣未滿，繼續打坐…</button>
+    <div class="hint" style="text-align:center;margin-top:6px;">打坐期間去歷練，靈氣照算（在線全速）</div>
+  </div>
+
+  <!-- ===== 場景：歷練選單 ===== -->
+  <div class="xx-scene" id="sc-explore-menu">
+    <h2>⚔️ 選擇歷練之地</h2>
+    <div class="hint">由淺入深，清理度滿 80% 解鎖下一區。死亡只掉少量隨身靈石，境界修為永不倒退，放膽闖。</div>
+    <div class="xx-scroll" id="xx-area-list"></div>
+  </div>
+
+  <!-- ===== 場景：煉丹 ALCHEMY ===== -->
+  <div class="xx-scene" id="sc-alchemy" style="background:none;">
+    <h2>⚗️ 丹房</h2>
+    <div class="hint" id="xx-alc-hint">投入靈草，丹爐起火，賭一爐稀有度。</div>
+    <div style="flex:1;"></div>
+    <div id="xx-alc-panel" style="background:rgba(20,15,30,.6);border:1px solid var(--c-line);
+      border-radius:12px;padding:12px;">
+      <div id="xx-alc-status" style="font-size:13px;margin-bottom:10px;text-align:center;color:var(--c-gold);"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="xx-btn gold" id="xx-alc-start" style="flex:1;">🔥 開爐煉丹</button>
+        <button class="xx-btn" id="xx-alc-speed" style="flex:1;" disabled>💎 靈石加速</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        <button class="xx-btn" id="xx-alc-prev" style="flex:1;">◀ 換丹方</button>
+        <button class="xx-btn" id="xx-alc-next" style="flex:1;">丹方 ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 場景：拍賣 AUCTION ===== -->
+  <div class="xx-scene" id="sc-auction" style="background:none;">
+    <h2>🏛️ 萬寶閣</h2>
+    <div class="hint" id="xx-auc-speech" style="min-height:28px;color:var(--c-gold);"></div>
+    <div style="flex:1;"></div>
+    <div id="xx-auc-panel" style="background:rgba(20,15,30,.7);border:1px solid var(--c-line);
+      border-radius:12px;padding:12px;">
+      <div id="xx-auc-item" style="text-align:center;margin-bottom:8px;"></div>
+      <div id="xx-auc-bidinfo" style="font-size:12px;text-align:center;margin-bottom:10px;color:var(--c-sub);"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="xx-btn" id="xx-auc-raise" style="flex:1;">加價</button>
+        <button class="xx-btn gold" id="xx-auc-buynow" style="flex:1;">一口價</button>
+      </div>
+      <button class="xx-btn" id="xx-auc-next" style="width:100%;margin-top:8px;">下一件 / 進場</button>
+    </div>
+  </div>
+
+  <!-- ===== 場景：背包 INVENTORY ===== -->
+  <div class="xx-scene" id="sc-inventory">
+    <h2>🎒 乾坤袋</h2>
+    <div style="display:flex;gap:6px;margin-bottom:8px;" id="xx-inv-tabs">
+      <button class="xx-btn" data-inv="pill" style="flex:1;padding:6px;font-size:11px;">丹藥</button>
+      <button class="xx-btn" data-inv="herb" style="flex:1;padding:6px;font-size:11px;">靈草</button>
+      <button class="xx-btn" data-inv="treasure" style="flex:1;padding:6px;font-size:11px;">法寶靈材</button>
+    </div>
+    <div class="xx-grid" id="xx-inv-grid"></div>
+  </div>
+
+  <!-- ===== 場景：每日任務 QUESTS ===== -->
+  <div class="xx-scene" id="sc-quests">
+    <h2>📜 每日任務 / 登入</h2>
+    <div class="hint" id="xx-quest-reset"></div>
+    <div class="xx-list" id="xx-quest-list"></div>
+    <div id="xx-login-row" style="margin-top:8px;"></div>
+  </div>
+
+  <!-- ===== 探索 HUD ===== -->
+  <div id="xx-explore-ui">
+    <div id="xx-joy"><div class="stick" id="xx-joy-stick"></div></div>
+    <div id="xx-skills">
+      <div class="xx-skill" id="xx-atk">⚔️</div>
+      <div class="xx-skill" id="xx-s0" data-skill="0">🗡️<span class="nm">御劍</span><div class="cd"></div><div class="cdt"></div></div>
+      <div class="xx-skill" id="xx-s1" data-skill="1">⚡<span class="nm">五雷</span><div class="cd"></div><div class="cdt"></div></div>
+      <div class="xx-skill" id="xx-s2" data-skill="2">🌀<span class="nm">劍陣</span><div class="cd"></div><div class="cdt"></div></div>
+      <div class="xx-skill" id="xx-s3" data-skill="3">💨<span class="nm">縮地</span><div class="cd"></div><div class="cdt"></div></div>
+    </div>
+  </div>
+  <button id="xx-home-btn">🏠 回洞府</button>
+  <button id="xx-interact">互動</button>
+  <div id="xx-death"></div>
+
+  <!-- 分頁 -->
   <div id="xx-tabs">
-    <div class="xx-tab active" data-page="meditate"><span class="ic">🧘</span>打坐</div>
-    <div class="xx-tab" data-page="battle"><span class="ic">⚔️</span>戰鬥</div>
-    <div class="xx-tab" data-page="event"><span class="ic">🌫️</span>奇遇</div>
-    <div class="xx-tab" data-page="alchemy"><span class="ic">⚗️</span>煉丹</div>
-    <div class="xx-tab" data-page="auction"><span class="ic">🔨</span>拍賣</div>
-    <div class="xx-tab" data-page="bag"><span class="ic">🎒</span>背包</div>
+    <button data-tab="home" class="on"><span class="ic">🏔️</span>洞府</button>
+    <button data-tab="meditate"><span class="ic">🧘</span>打坐</button>
+    <button data-tab="explore-menu"><span class="ic">⚔️</span>歷練</button>
+    <button data-tab="alchemy"><span class="ic">⚗️</span>煉丹</button>
+    <button data-tab="auction"><span class="ic">🏛️</span>拍賣</button>
+    <button data-tab="inventory"><span class="ic">🎒</span>背包</button>
+    <button data-tab="quests"><span class="ic">📜</span>任務</button>
   </div>
+
+  <!-- 通用彈窗 -->
+  <div id="xx-modal"><div class="xx-card" id="xx-modal-card"></div></div>
 </div>
 
 <script>
 (function(){
 "use strict";
-/* =========================================================================
-   散修崛起：斬妖煉天訣 — 單一自包含 2.5D 等角修仙 RPG
-   架構：DATA(設計資料) → STATE(存檔) → 各系統(打坐/突破/戰鬥/奇遇/煉丹/拍賣)
-   ========================================================================= */
+/* =====================================================================
+   0. 既有 config 沿用（realms / skills / rarity / lore 全部照搬）
+   ===================================================================== */
+const REALMS=[ // 沿用 mechanics.realms（突破成本/成功率/掛機/atk/hp）
+ {i:0,cost:100,rate:1.0,idle:5,atk:10,hp:100},
+ {i:1,cost:800,rate:0.95,idle:18,atk:22,hp:260},
+ {i:2,cost:6000,rate:0.9,idle:65,atk:50,hp:680},
+ {i:3,cost:42000,rate:0.85,idle:230,atk:115,hp:1750},
+ {i:4,cost:300000,rate:0.78,idle:820,atk:265,hp:4500},
+ {i:5,cost:2100000,rate:0.7,idle:2900,atk:610,hp:11500},
+ {i:6,cost:15000000,rate:0.62,idle:10300,atk:1400,hp:29000},
+ {i:7,cost:110000000,rate:0.55,idle:36500,atk:3200,hp:74000},
+ {i:8,cost:800000000,rate:0.48,idle:130000,atk:7400,hp:190000},
+ {i:9,cost:6000000000,rate:0.4,idle:460000,atk:17000,hp:480000}
+];
+const REALM_NAMES=["煉氣境","築基境","金丹境","元嬰境","化神境","煉虛境","合體境","大乘境","渡劫境","散仙境"];
+const REALM_DESC=[ // 沿用 lore.realms 描述，當突破文案
+ "剛把天地靈氣吸進丹田，連飛劍都拿不穩。","丹田打地基蓋房子，能御物半空小飄一下。",
+ "靈力凝成一顆金燦燦的丹，凡人見了得喊前輩。","體內孕出一個小小的自己，命硬得像蟑螂。",
+ "神識能撐開半座山，動念之間風雲變色。","把虛空當黏土捏，一拳能砸出個窟窿。",
+ "人與天地法則合而為一，連呼吸都在偷渡靈氣。","準備渡劫飛升，跺一腳整片大陸都要抖。",
+ "老天親自下場用雷劈你，扛過去成仙。","遊走天地縫隙，比仙還難纏，比魔還自由。"];
 
-/* ---------- 1. 世界觀與數值資料（照設計師 JSON） ---------- */
-var WORLD = {
-  intro:"你本是凡塵一介散修，無門無派、無師無錢，只有一口不肯認命的氣。一卷殘破道訣、一塊靈石、一條荒野斜陽路——從這裡開始，打坐吐納、揮劍斬妖，總有一天要把這片天，踩在腳底下。走吧，少年，這條登仙路，沒人為你鋪，那就自己殺出來。",
-  realms:[
-    {name:"煉氣境",desc:"剛把天地靈氣吸進丹田，像第一次喝靈茶被嗆到，連飛劍都拿不穩。"},
-    {name:"築基境",desc:"丹田打地基蓋房子，靈力總算不再漏風，能御物半空小飄一下。"},
-    {name:"金丹境",desc:"靈力凝成一顆金燦燦的丹，走路有風、放屁帶光，凡人見了得喊前輩。"},
-    {name:"元嬰境",desc:"體內孕出一個小小的自己，肉身爆了還能靠元嬰逃命，命硬得像蟑螂。"},
-    {name:"化神境",desc:"神識能撐開半座山，動念之間風雲變色，開始有資格跟天講道理。"},
-    {name:"煉虛境",desc:"把虛空當黏土捏，一拳打出去能砸出個窟窿，凡間已經裝不下你了。"},
-    {name:"合體境",desc:"人與天地法則合而為一，一舉一動都是道，連呼吸都在偷渡靈氣。"},
-    {name:"大乘境",desc:"準備渡劫飛升的最後一站，跺一腳整片大陸都要抖三抖。"},
-    {name:"渡劫境",desc:"老天親自下場用雷劈你，扛過去成仙，扛不過去化灰，刺激。"},
-    {name:"散仙境",desc:"飛升失敗卻沒死透的狠人，遊走天地縫隙，比仙還難纏，比魔還自由。"}
-  ],
-  // 各境界數值表
-  realmStats:[
-    {breakthroughCost:100,successRate:1,idlePerSec:5,atk:10,hp:100},
-    {breakthroughCost:800,successRate:0.95,idlePerSec:18,atk:22,hp:260},
-    {breakthroughCost:6000,successRate:0.9,idlePerSec:65,atk:50,hp:680},
-    {breakthroughCost:42000,successRate:0.85,idlePerSec:230,atk:115,hp:1750},
-    {breakthroughCost:300000,successRate:0.78,idlePerSec:820,atk:265,hp:4500},
-    {breakthroughCost:2100000,successRate:0.7,idlePerSec:2900,atk:610,hp:11500},
-    {breakthroughCost:15000000,successRate:0.62,idlePerSec:10300,atk:1400,hp:29000},
-    {breakthroughCost:110000000,successRate:0.55,idlePerSec:36500,atk:3200,hp:74000},
-    {breakthroughCost:800000000,successRate:0.48,idlePerSec:130000,atk:7400,hp:190000},
-    {breakthroughCost:6000000000,successRate:0.4,idlePerSec:460000,atk:17000,hp:480000}
-  ],
-  events:[
-    {title:"古洞遺寶",text:"路邊一個不起眼的山洞飄出靈光，你鑽進去摸到前輩遺骨，旁邊還壓著一本功法殘卷——免費的，最香了。",type:"good"},
-    {title:"靈泉沐浴",text:"撞見一汪七彩靈泉，泡進去爽到飛起，根骨被洗了一遍，下次突破成功率偷偷加成。",type:"good"},
-    {title:"老乞丐傳功",text:"討飯的髒老頭其實是隱世大能，看你順眼隨手點了你一下，丹田暖流亂竄，白賺一甲子功力。",type:"good"},
-    {title:"頓悟天機",text:"坐在瀑布下發呆，腦袋突然「叮」一聲開竅，當場參透一段劍意，原地小突破。",type:"good"},
-    {title:"撿到靈寵蛋",text:"草叢裡一顆會發光的蛋對你眨眼，抱回去孵，運氣好是隻護主神獸，運氣差是隻會咬人的祖宗。",type:"good"},
-    {title:"走火入魔",text:"修煉太貪心，靈氣在經脈裡暴衝亂撞，七竅噴血、心魔上頭，得趕緊穩住別瘋。",type:"bad"},
-    {title:"黑店宰客",text:"進城補給，黑心店家賣你一爐假靈石，貴得要死還是空包彈，靈石虧一筆。",type:"bad"},
-    {title:"仇家伏擊",text:"轉角遇到看你不順眼的同階修士，二話不說一劍捅來，掉血又掉裝備，江湖險惡。",type:"bad"},
-    {title:"丹爐炸膛",text:"煉丹火候沒控好，砰一聲整座爐炸開，眉毛燒沒了，材料全燬，臉黑得能磨墨。",type:"bad"},
-    {title:"瘴氣迷林",text:"誤闖一片毒霧森林，靈力被封、方向全亂，繞了三天三夜才出來，餓到開始啃樹皮。",type:"bad"},
-    {title:"野生攤販",text:"路邊冒出個吆喝的小販，東西真假參半，可能撿漏神器，也可能買回一堆破銅爛鐵，賭的就是眼力。",type:"neutral"},
-    {title:"棋局論道",text:"遇見一位下棋的散仙，要你陪手談一局，贏了給好處，輸了被嘲諷，平手他笑而不語飄走。",type:"neutral"},
-    {title:"渡劫圍觀",text:"撞見別人在渡天劫，雷光沖天場面震撼，蹭點殘餘劍意有賺，但站太近也可能被波及。",type:"neutral"},
-    {title:"岔路抉擇",text:"前方分三條路：左邊有寶氣、右邊有殺氣、中間最安全，選哪條全看你今天敢不敢賭。",type:"neutral"}
-  ],
-  mobs:[
-    {name:"赤目野狼",em:"🐺",c:"#9a8b80"},
-    {name:"幽綠屍蝠",em:"🦇",c:"#6bff8a"},
-    {name:"青甲毒蠍",em:"🦂",c:"#2f8a6a"},
-    {name:"石殼穿山妖",em:"🦔",c:"#8a7a5a"},
-    {name:"黑霧遊魂",em:"👻",c:"#9d6bff"},
-    {name:"金紋火狐",em:"🦊",c:"#ff8a3c"},
-    {name:"藤蔓食人花",em:"🌺",c:"#5a8a3a"},
-    {name:"白骨小卒",em:"💀",c:"#e8e0d0"}
-  ],
-  bosses:[
-    {name:"血手屠夫·岡",title:"百里血路魔修",em:"🪓",taunt:"嘿，又一個送上門的靈體？放心，我這把刀很快，你連喊疼都來不及。"},
-    {name:"千面妖姬·媚兒",title:"攝魂幻心魔女",em:"🦊",taunt:"小修士，看著我的眼睛——你說，是先愛上我，還是先死在我懷裡呢？"},
-    {name:"蝕骨蛛王",title:"幽冥八荒蛛母",em:"🕷️",taunt:"我的網，已經繞了你三圈了。掙扎吧，掙扎的樣子最好吃。"},
-    {name:"焚天魔尊·赫連",title:"焚盡九霄火魔王",em:"🔥",taunt:"螻蟻也敢踏進我的火域？我打個噴嚏，你連灰都不剩。"},
-    {name:"無面冥判·歸墟",title:"執掌生死冥判",em:"⚖️",taunt:"你的名字，我已經寫在黃泉簿上了。現在，只差把你送過去。"},
-    {name:"古龍·墨淵",title:"沉睡萬載真龍",em:"🐉",taunt:"吵醒本座的代價……就用你那點可憐的修為，慢慢償還吧。"}
-  ],
-  rarityNames:["凡品","良品","上品","極品","仙品"],
-  pills:[
-    {name:"回氣丹",grade:1,em:"💊",desc:"最入門的補血丹，受傷或靈力見底時嗑一顆，回點氣續命。"},
-    {name:"凝神丹",grade:2,em:"🟢",desc:"穩固心神、壓制心魔，突破時手不抖、心不亂。"},
-    {name:"洗髓培元丹",grade:3,em:"🔵",desc:"洗一遍經脈雜質、溫養根骨，長期吃資質悄悄變好。"},
-    {name:"破境玄丹",grade:4,em:"🟣",desc:"卡關專用，臨門一腳吃下去，硬把突破成功率往上拉。"},
-    {name:"九轉還魂丹",grade:5,em:"🔴",desc:"傳說級救命丹，只要一口氣還在就能拉你回來。"},
-    {name:"造化逆天丹",grade:6,em:"🟡",desc:"奪天地造化的禁忌神丹，吃一顆等於白修數十載。"}
-  ],
-  // 稀有度抽獎表（煉成瞬間擲骰）
-  rarityTiers:[
-    {tier:1,chance:0.5,effectMult:1},
-    {tier:2,chance:0.28,effectMult:1.5},
-    {tier:3,chance:0.15,effectMult:2.5},
-    {tier:4,chance:0.06,effectMult:4},
-    {tier:5,chance:0.01,effectMult:8}
-  ],
-  pillBaseValue:[120,900,6500,46000,330000,2400000], // 各階丹方基值
-  // 拍賣
-  auctioneerIntro:"各位道友——壓住你們躁動的靈力，捂緊你們鼓鼓的靈石袋！今夜的萬寶閣，天驕雲集、群魔畢至，本公子手中這把金錘，每落一次，都將改寫一段機緣！出價吧，命運從不等猶豫的人！",
-  catchphrases:[
-    "一千靈石起標——這個價，連顆靈果都買不到，卻能換你一場造化，還等什麼？",
-    "後排那位蒙面道友出價了！有沒有人不服？不服就用靈石說話！",
-    "機會稍縱即逝，猶豫的人只配看別人飛升——加價！再加！",
-    "確定？這一錘下去，可就沒有後悔藥囉～",
-    "好氣魄，本公子都想替你鼓掌——還有誰敢搶？",
-    "成交！金錘落定，寶歸有緣人——恭喜這位道友，今夜你賺翻了！"
-  ],
-  treasures:[
-    {name:"斬天弒神劍",type:"法寶",em:"⚔️",desc:"揮出去能撕開虛空，認主後與你一同成長。",atk:0.3},
-    {name:"太虛護身玉璧",type:"法寶",em:"🛡️",desc:"危急時自動護主，再強的偷襲也能硬扛一下。",def:0.5},
-    {name:"乾坤須彌戒",type:"靈材",em:"💍",desc:"內藏一方獨立空間，靈石丹藥隨身帶。",atk:0.1,def:0.1},
-    {name:"九天玄雷功",type:"功法",em:"⚡",desc:"修成後一掌引動九天神雷，劈得妖魔哭爹喊娘。",atk:0.25},
-    {name:"鳳凰涅槃訣",type:"功法",em:"🔥",desc:"肉身被毀也能在烈焰中重塑，越戰越強。",hp:0.4},
-    {name:"萬年寒鐵",type:"靈材",em:"🧊",desc:"鑄器師夢寐以求的頂級材料，自帶冰封之力。",atk:0.15,def:0.15},
-    {name:"造化青蓮種",type:"靈材",em:"🪷",desc:"孕育天地靈氣的仙蓮種子，能結出逆天造化的靈果。",idle:0.2},
-    {name:"九轉還魂丹",type:"丹藥",em:"🔴",desc:"仙品級救命神丹，只要一息尚存便可起死回生。",hp:0.3},
-    {name:"麒麟血脈靈寵·小焰",type:"靈寵",em:"🐲",desc:"能噴火助戰、嗅探寶氣，還會撒嬌討丹吃。",atk:0.2,hp:0.2},
-    {name:"噬魂墨蛟蛋",type:"靈寵",em:"🥚",desc:"孵化後是隻能呼風喚雨的小墨蛟，潛力深不可測。",atk:0.15,def:0.2}
-  ],
-  // 技能
-  skills:[
-    {name:"御劍斬",qiCost:15,cooldownMs:1200,dmgMult:2.2},
-    {name:"五雷轟頂",qiCost:40,cooldownMs:4000,dmgMult:3.5},
-    {name:"太虛劍陣",qiCost:90,cooldownMs:11000,dmgMult:6},
-    {name:"縮地成寸",qiCost:25,cooldownMs:3000,dmgMult:0}
-  ],
-  // 靈草（依階）
-  herbs:["凡品靈草","聚靈草","築基靈芝","金髓花","元嬰仙草","化神蓮"]
-};
+// 四技能 沿用 combat.skills
+const SKILLS=[
+ {name:"御劍斬",qi:15,cd:1200,mult:2.2,kind:"line"},
+ {name:"五雷轟頂",qi:40,cd:4000,mult:3.5,kind:"aoe"},
+ {name:"太虛劍陣",qi:90,cd:11000,mult:6,kind:"ring"},
+ {name:"縮地成寸",qi:25,cd:3000,mult:1,kind:"dash"}
+];
+// 稀有度 沿用 alchemy.rarityTiers + lore.rarityNames
+const RARITY=[
+ {t:1,chance:0.5,mult:1},{t:2,chance:0.28,mult:1.5},{t:3,chance:0.15,mult:2.5},
+ {t:4,chance:0.06,mult:4},{t:5,chance:0.01,mult:8}];
+const RARITY_NAMES=["凡品","良品","上品","極品","仙品"];
+const RARITY_COLOR=["#9aa","#4a7fd0","#9d6fe0","#f5d27a","#ff8a3c"];
+// 丹方 沿用 alchemy baseValue + unlockRule + lore.pills
+const PILLS=[
+ {grade:1,name:"回氣丹",base:120,unlock:0},
+ {grade:2,name:"凝神丹",base:900,unlock:2},
+ {grade:3,name:"洗髓培元丹",base:6500,unlock:3},
+ {grade:4,name:"破境玄丹",base:46000,unlock:4},
+ {grade:5,name:"九轉還魂丹",base:330000,unlock:6},
+ {grade:6,name:"造化逆天丹",base:2400000,unlock:8}];
+// 妖物 沿用 lore.mobs + emoji
+const MOBS={
+ wolf:{name:"赤目野狼",emoji:"🐺"},bat:{name:"幽綠屍蝠",emoji:"🦇"},
+ scorpion:{name:"青甲毒蠍",emoji:"🦂"},rock:{name:"石殼穿山妖",emoji:"🪨"},
+ ghost:{name:"黑霧遊魂",emoji:"👻"},fox:{name:"金紋火狐",emoji:"🦊"},
+ flower:{name:"藤蔓食人花",emoji:"🌺"},bone:{name:"白骨小卒",emoji:"💀"}};
+// Boss 沿用 lore.bosses
+const BOSSES={
+ gang:{name:"血手屠夫·岡",taunt:"嘿，又一個送上門的靈體？我這把刀很快，你連喊疼都來不及。",emoji:"🪓"},
+ meier:{name:"千面妖姬·媚兒",taunt:"小修士，看著我的眼睛——是先愛上我，還是先死在我懷裡呢？",emoji:"💃"},
+ spider:{name:"蝕骨蛛王",taunt:"我的網，已經繞了你三圈了。掙扎的樣子最好吃。",emoji:"🕷️"},
+ hlian:{name:"焚天魔尊·赫連",taunt:"螻蟻也敢踏進我的火域？我打個噴嚏，你連灰都不剩。",emoji:"🔥"},
+ dragon:{name:"古龍·墨淵",taunt:"吵醒本座的代價……就用你那點可憐的修為，慢慢償還吧。",emoji:"🐉"}};
+// 拍賣官 沿用 lore.auctioneer
+const AUCTIONEER={name:"金錘公子·萬寶來",lines:[
+ "一千靈石起標——這個價，連顆靈果都買不到，卻能換你一場造化！",
+ "後排那位蒙面道友出價了！有沒有人不服？不服就用靈石說話！",
+ "機會稍縱即逝，猶豫的人只配看別人飛升——加價！再加！",
+ "確定？這一錘下去，可就沒有後悔藥囉～","好氣魄！本公子都想替你鼓掌——還有誰敢搶？",
+ "成交！金錘落定，寶歸有緣人——恭喜這位道友，今夜你賺翻了！"]};
+// 拍賣珍寶 沿用 lore.auctionTreasures
+const TREASURES=[
+ {name:"斬天弒神劍",type:"法寶",emoji:"🗡️"},{name:"太虛護身玉璧",type:"法寶",emoji:"🛡️"},
+ {name:"乾坤須彌戒",type:"靈材",emoji:"💍"},{name:"九天玄雷功",type:"功法",emoji:"📜"},
+ {name:"鳳凰涅槃訣",type:"功法",emoji:"🔥"},{name:"萬年寒鐵",type:"靈材",emoji:"🧊"},
+ {name:"造化青蓮種",type:"靈材",emoji:"🌸"},{name:"九轉還魂丹",type:"丹藥",emoji:"💊"},
+ {name:"麒麟血脈靈寵·小焰",type:"靈寵",emoji:"🦁"},{name:"噬魂墨蛟蛋",type:"靈寵",emoji:"🥚"}];
+// 奇遇 沿用 lore.events
+const ENCOUNTERS=[
+ {t:"古洞遺寶",d:"洞口飄出靈光，摸到前輩遺骨與功法殘卷。",k:"good"},
+ {t:"靈泉沐浴",d:"七彩靈泉洗了一遍根骨，下次突破成功率偷偷加成。",k:"good"},
+ {t:"老乞丐傳功",d:"髒老頭其實是隱世大能，白賺一甲子功力。",k:"good"},
+ {t:"頓悟天機",d:"瀑布下發呆，腦袋叮一聲，當場參透一段劍意。",k:"good"},
+ {t:"走火入魔",d:"靈氣暴衝亂撞，七竅噴血、心魔上頭。",k:"bad"},
+ {t:"黑店宰客",d:"黑心店家賣你一爐假靈石，靈石虧一筆。",k:"bad"},
+ {t:"野生攤販",d:"東西真假參半，賭的就是眼力。",k:"neutral"}];
 
-/* ---------- 2. 工具函式 ---------- */
-function fmt(n){ // 大數字格式化（萬/億/兆）
-  n=Math.floor(n);
-  if(n<10000)return ''+n;
-  if(n<1e8)return (n/1e4).toFixed(n<1e6?1:0)+'萬';
-  if(n<1e12)return (n/1e8).toFixed(2)+'億';
-  return (n/1e12).toFixed(2)+'兆';
-}
-function rnd(a,b){return a+Math.random()*(b-a);}
-function clamp(v,a,b){return v<a?a:(v>b?b:v);}
-function todayStr(){ // 台北日期 yyyy-mm-dd
-  var d=new Date(Date.now()+8*3600*1000);
-  return d.toISOString().slice(0,10);
-}
+/* ---- 既有公式 沿用 combat ---- */
+const COMBAT={moveSpeed:220,atkRange:70,atkCdMs:450};
+function expPerKill(er){return Math.round(8*Math.pow(1.5,er));}
+function enemyHp(er,em){return Math.round(60*Math.pow(2.6,er)*em);}
+function enemyAtk(er,em){return Math.round(6*Math.pow(2.4,er)*em);}
+function stoneGain(er,em){return Math.round(3*Math.pow(1.7,er))*em;}
+function expToQi(exp,pr){return Math.round(exp*(1+pr*0.15));}
+function refineSec(tier){return Math.round(30*Math.pow(2.2,tier-1));}
+function speedCost(remain){return Math.ceil(remain*0.5);}
+function sellPrice(base,mult){return Math.round(base*mult*0.15);}
 
-/* ---------- 3. 存檔狀態 ---------- */
-var SAVE_KEY="xianxia_save_v1";
-var S; // 全域狀態
+/* =====================================================================
+   1. 區域資料（5 區，怪物階浮動 + 區域底線，越深越強）
+   ===================================================================== */
+const AREAS=[
+ {id:1,name:"斜陽荒野",theme:"#c8a24a",ground:["#3a3018","#463a1e"],
+  bounds:{w:30,h:30},erMin:0,erMax:1,boss:"gang",
+  mobTypes:["wolf","bone"],unlock:{realm:0,prev:0},spawns:{mob:14,elite:2,chest:4,herb:6,enc:2,npc:1}},
+ {id:2,name:"幽綠妖林",theme:"#3ea85f",ground:["#16321c","#1d3d22"],
+  bounds:{w:34,h:34},erMin:1,erMax:3,boss:"meier",
+  mobTypes:["bat","flower","fox"],unlock:{realm:2,prev:0.8},spawns:{mob:16,elite:3,chest:5,herb:7,enc:2,npc:1}},
+ {id:3,name:"千墓古墓",theme:"#7d5fd0",ground:["#221833","#2c2042"],
+  bounds:{w:38,h:38},erMin:3,erMax:5,boss:"spider",
+  mobTypes:["ghost","bone","rock"],unlock:{realm:3,prev:0.8},spawns:{mob:18,elite:4,chest:6,herb:8,enc:3,npc:1}},
+ {id:4,name:"焚天魔域",theme:"#e0552e",ground:["#3a160d","#4a1c10"],
+  bounds:{w:42,h:42},erMin:5,erMax:7,boss:"hlian",
+  mobTypes:["fox","scorpion"],unlock:{realm:4,prev:0.8},spawns:{mob:20,elite:5,chest:7,herb:9,enc:3,npc:1}},
+ {id:5,name:"混沌秘境",theme:"#b06fe0",ground:["#241a3a","#322449"],
+  bounds:{w:46,h:46},erMin:7,erMax:9,boss:"dragon",
+  mobTypes:["ghost","fox","scorpion","rock"],unlock:{realm:6,prev:1,bossKilled:"hlian"},
+  spawns:{mob:22,elite:7,chest:8,herb:10,enc:3,npc:1}}
+];
+const TILE_W=64,TILE_H=32;
+
+/* =====================================================================
+   2. 遊戲狀態 gameState（記憶體單一物件；切頁/場景只改 DOM 不重置）
+   ===================================================================== */
+const SAVE_KEY="xiuxian_arpg_v2";
+let S=loadGame()||defaultState();
 function defaultState(){
-  return {
-    realm:0, exp:0, qi:0, level:1,
-    stone:200,
-    bonusAtkPct:0,        // 戰鬥熟練度永久加成
-    kills:0,
-    treasures:{},         // 珍寶 {name:count}
-    pills:{},             // 丹藥 {key:count} key=丹名|tier
-    herbs:[3,0,0,0,0,0],  // 各階靈草數量（給點起手）
-    furnace:null,         // 煉丹爐 {recipe,tier,endTime} 或 null
-    lastSave:Date.now(),
-    auctionDay:"",        // 今日是否已生成
-    auctionEntered:false, // 今日是否已入場
-    auctionItems:null,    // 今日拍賣品
-    auctionIndex:0,       // 已拍到第幾件
-    clearCountDay:"",     // 清場雙倍計數日期
-    clearCount:0
-  };
+ return {realm:0,qi:0,lifetimeQi:0,stones:0,exp:0,combatBonus:0,breakBonus:0,
+  inv:{pill:{},herb:{},treasure:{}},alcPillIdx:0,alc:null,
+  areaClear:{},areaBoss:{},
+  daily:{date:"",quests:null,clears:{}},login:{date:"",streak:0,claimedToday:false},
+  milestones:{},lastSave:Date.now(),pickedMeditate:false,_meta:{},
+  _aucDay:"",_aucList:[],_aucDone:[],_aucEntered:false,_lastDeath:0};
 }
-function load(){
-  try{
-    var raw=localStorage.getItem(SAVE_KEY);
-    if(raw){ S=JSON.parse(raw);
-      // 補欄位（版本相容）
-      var d=defaultState();
-      for(var k in d){ if(!(k in S)) S[k]=d[k]; }
-    } else { S=defaultState(); }
-  }catch(e){ S=defaultState(); }
+// 進度單調防護：境界與累計修為設「歷史最高水位」，任何時候都不得低於水位才能寫檔。
+// 這是對產品負責人回報的「切場景造成等級／修為倒退」做的硬性保險——就算別處有 bug 想調低，也擋下來。
+function enforceMonotonic(){
+ if(typeof S.realm!=="number"||S.realm<0)S.realm=0;
+ if(S._maxRealm==null)S._maxRealm=S.realm;
+ if(S.realm<S._maxRealm)S.realm=S._maxRealm; else S._maxRealm=S.realm;
+ if(S._maxLifeQi==null)S._maxLifeQi=S.lifetimeQi||0;
+ if((S.lifetimeQi||0)<S._maxLifeQi)S.lifetimeQi=S._maxLifeQi; else S._maxLifeQi=S.lifetimeQi;
 }
-function save(){
-  try{ S.lastSave=Date.now(); localStorage.setItem(SAVE_KEY,JSON.stringify(S)); }catch(e){}
+function saveGame(){try{enforceMonotonic();S.lastSave=Date.now();localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}}
+function loadGame(){try{const r=localStorage.getItem(SAVE_KEY);if(!r)return null;
+  const o=JSON.parse(r);if(!o.inv)o.inv={pill:{},herb:{},treasure:{}};
+  if(!o._meta)o._meta={};if(!o.areaClear)o.areaClear={};if(!o.areaBoss)o.areaBoss={};
+  if(!o.milestones)o.milestones={};if(!o.daily)o.daily={date:"",quests:null,clears:{}};
+  if(!o.login)o.login={date:"",streak:0,claimedToday:false};return o;}catch(e){return null;}}
+
+function curRealm(){return REALMS[Math.min(S.realm,9)];}
+function playerAtk(){return Math.round(curRealm().atk*(1+S.combatBonus));}
+function playerMaxHp(){return curRealm().hp;}
+function playerDef(){return S.realm*8;}
+function breakCost(){return curRealm().cost;}
+
+/* =====================================================================
+   3. DOM 快取 / 工具
+   ===================================================================== */
+const $=id=>document.getElementById(id);
+const root=$("xx-root"),cv=$("xx-canvas"),ctx=cv.getContext("2d");
+const mini=$("xx-minimap"),mctx=mini.getContext("2d");
+let DPR=Math.min(window.devicePixelRatio||1,2),W=0,H=0;
+function resize(){const r=root.getBoundingClientRect();W=r.width;H=r.height;
+ cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+"px";cv.style.height=H+"px";
+ ctx.setTransform(DPR,0,0,DPR,0,0);}
+window.addEventListener("resize",resize);
+
+function fmt(n){n=Math.floor(n);
+ if(n<10000)return n.toLocaleString();
+ if(n<1e8)return (n/1e4).toFixed(2).replace(/\.?0+$/,"")+"萬";
+ if(n<1e12)return (n/1e8).toFixed(2).replace(/\.?0+$/,"")+"億";
+ return (n/1e12).toFixed(2).replace(/\.?0+$/,"")+"兆";}
+function rand(a,b){return a+Math.random()*(b-a);}
+function clamp(v,a,b){return v<a?a:v>b?b:v;}
+
+function floatText(txt,sx,sy,color,size){
+ const el=document.createElement("div");el.className="xx-fl";el.textContent=txt;
+ el.style.left=sx+"px";el.style.top=sy+"px";el.style.color=color||"#fff";
+ el.style.fontSize=(size||15)+"px";$("xx-float").appendChild(el);
+ setTimeout(()=>el.remove(),1000);}
+function banner(txt,color){const el=document.createElement("div");el.className="xx-banner";
+ el.textContent=txt;if(color)el.style.color=color;$("xx-float").appendChild(el);
+ setTimeout(()=>el.remove(),1400);}
+
+/* =====================================================================
+   4. JuiceFX：震屏 / hitstop / 慢動作 / 閃白 / 金柱
+   ===================================================================== */
+const FX={shake:0,hitstop:0,slowmo:0,flash:0,goldBeam:0};
+function shake(p){FX.shake=Math.max(FX.shake,p);}
+function hitstop(ms){FX.hitstop=Math.max(FX.hitstop,ms);}
+function slowmo(ms){FX.slowmo=Math.max(FX.slowmo,ms);}
+
+const particles=[];
+function spawnParticle(x,y,vx,vy,life,color,size,grav){
+ particles.push({x,y,vx,vy,life,max:life,color,size:size||3,grav:grav||0});}
+function updateParticles(dt){
+ for(let i=particles.length-1;i>=0;i--){const p=particles[i];
+  p.life-=dt;if(p.life<=0){particles.splice(i,1);continue;}
+  p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=(p.grav||0)*dt;}}
+function drawParticles(){
+ particles.forEach(p=>{const a=clamp(p.life/p.max,0,1);
+  ctx.globalAlpha=a;ctx.fillStyle=p.color;
+  ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,7);ctx.fill();});
+ ctx.globalAlpha=1;}
+
+/* =====================================================================
+   5. 等角投影 + 相機（IsoRenderer）
+   ===================================================================== */
+const cam={x:0,y:0,tx:0,ty:0};
+function iso(wx,wy){return {x:(wx-wy)*TILE_W/2+cam.x,y:(wx+wy)*TILE_H/2+cam.y};}
+function screenDirToWorld(dx,dy){ // 螢幕方向 -> 世界方向（往上推=畫面往上走）
+ const wx=(dx/(TILE_W/2)+dy/(TILE_H/2))/2;
+ const wy=(dy/(TILE_H/2)-dx/(TILE_W/2))/2;return {x:wx,y:wy};}
+
+/* =====================================================================
+   6. 帥氣修仙劍客（Canvas：道袍/髮髻/飛劍/靈氣光環）
+   ===================================================================== */
+const player={wx:0,wy:0,dir:{x:0,y:1},hp:100,maxHp:100,
+ atkTimer:0,invuln:0,hurtFlash:0,attacking:0,facing:1};
+
+function drawSwordsman(sx,sy,scale,faceX,opts){
+ opts=opts||{};
+ const robe="#5b3fa0",robe2="#8b6fd6",trim="#f5d27a",skin="#f3d9b8";
+ const t=performance.now()/1000;
+ ctx.save();ctx.translate(sx,sy);ctx.scale(scale,scale);
+ // 影子
+ ctx.save();ctx.globalAlpha=.32;ctx.fillStyle="#000";
+ ctx.beginPath();ctx.ellipse(0,2,17,7,0,0,7);ctx.fill();ctx.restore();
+ const bob=Math.sin(t*3)*1.2;ctx.translate(0,bob);
+ if(faceX<0)ctx.scale(-1,1);
+ // 靈氣光環（境界越高越亮）
+ const aura=clamp(0.18+S.realm*0.08,0.18,0.9);
+ const ag=ctx.createRadialGradient(0,-14,4,0,-14,26);
+ ag.addColorStop(0,"rgba(127,240,218,"+(aura*0.5)+")");
+ ag.addColorStop(1,"rgba(127,240,218,0)");
+ ctx.fillStyle=ag;ctx.beginPath();ctx.arc(0,-14,26,0,7);ctx.fill();
+ // 飛劍
+ const sw=opts.swing||0;
+ ctx.save();ctx.translate(10,-16);ctx.rotate(-0.5-sw*1.8);
+ ctx.fillStyle="#cfe6ff";ctx.strokeStyle=trim;ctx.lineWidth=0.8;
+ ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(2,-22);ctx.lineTo(0,-26);ctx.lineTo(-2,-22);ctx.closePath();
+ ctx.fill();ctx.stroke();ctx.fillStyle=trim;ctx.fillRect(-3,0,6,3);ctx.restore();
+ // 道袍下擺
+ const flap=Math.sin(t*4)*1.5;
+ ctx.fillStyle=robe;ctx.beginPath();
+ ctx.moveTo(-7,-22);ctx.lineTo(7,-22);ctx.lineTo(10+flap,2);ctx.lineTo(-10-flap,2);ctx.closePath();ctx.fill();
+ ctx.fillStyle=robe2;ctx.beginPath();
+ ctx.moveTo(-7,-22);ctx.lineTo(0,-22);ctx.lineTo(2,2);ctx.lineTo(-10-flap,2);ctx.closePath();ctx.fill();
+ ctx.fillStyle=trim;ctx.fillRect(-1.5,-22,3,24);ctx.fillRect(-8,-8,16,3);
+ ctx.strokeStyle=trim;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-7,-22);ctx.lineTo(7,-22);ctx.stroke();
+ // 手臂
+ ctx.strokeStyle=robe;ctx.lineWidth=3.4;ctx.lineCap="round";
+ ctx.beginPath();ctx.moveTo(4,-19);ctx.lineTo(8+sw*7,-15+sw*3);ctx.stroke();
+ // 頭/髮髻/髮冠
+ ctx.fillStyle=skin;ctx.beginPath();ctx.arc(0,-27,5.4,0,7);ctx.fill();
+ ctx.fillStyle="#241a33";ctx.beginPath();ctx.arc(0,-30,5.6,Math.PI,0);ctx.fill();
+ ctx.beginPath();ctx.ellipse(0,-34,2.6,3.2,0,0,7);ctx.fill();
+ ctx.fillStyle=trim;ctx.fillRect(-1,-35.5,2,2.4);
+ ctx.fillStyle="#1a1024";ctx.beginPath();ctx.arc(2,-27,0.9,0,7);ctx.fill();
+ // 飄帶
+ ctx.strokeStyle=robe2;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-7,-20);
+ ctx.quadraticCurveTo(-14-flap*2,-14+Math.sin(t*5)*3,-12,-4);ctx.stroke();
+ ctx.restore();
+ if(opts.flash>0){ctx.save();ctx.globalAlpha=opts.flash;ctx.globalCompositeOperation="lighter";
+  ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(sx,sy-14,18,0,7);ctx.fill();ctx.restore();}
+}
+function drawMob(m,sx,sy){
+ ctx.save();ctx.globalAlpha=.3;ctx.fillStyle="#000";
+ ctx.beginPath();ctx.ellipse(sx,sy+2,15*m.scale,6*m.scale,0,0,7);ctx.fill();ctx.restore();
+ const t=performance.now()/1000,bob=Math.sin(t*3+m.seed)*2;
+ if(m.elite){ctx.save();ctx.globalAlpha=.5;
+  const g=ctx.createRadialGradient(sx,sy-16,2,sx,sy-16,24*m.scale);
+  g.addColorStop(0,"rgba(245,210,122,.7)");g.addColorStop(1,"rgba(245,210,122,0)");
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(sx,sy-16,24*m.scale,0,7);ctx.fill();ctx.restore();
+  ctx.font="11px serif";ctx.fillText("💠",sx-6,sy-30);}
+ ctx.font=Math.round((m.boss?40:26)*m.scale)+"px serif";
+ ctx.textAlign="center";ctx.textBaseline="middle";
+ ctx.save();if(m.hurtFlash>0)ctx.filter="brightness(3) saturate(0)";
+ ctx.fillText(m.def.emoji,sx+m.knock,sy-14+bob);ctx.restore();ctx.filter="none";
+ const bw=m.boss?44:30,hpr=clamp(m.hp/m.maxHp,0,1),yy=sy-34-(m.boss?8:0);
+ ctx.fillStyle="rgba(0,0,0,.6)";ctx.fillRect(sx-bw/2,yy,bw,4);
+ ctx.fillStyle=m.elite?"#f5d27a":(m.boss?"#ff5a6a":"#7df0da");ctx.fillRect(sx-bw/2,yy,bw*hpr,4);
+ if(m.elite||m.boss){ctx.strokeStyle="#f5d27a";ctx.lineWidth=1;ctx.strokeRect(sx-bw/2,yy,bw,4);}
+ ctx.textAlign="left";ctx.textBaseline="alphabetic";
 }
 
-/* ---------- 4. 衍生屬性計算（含珍寶加成） ---------- */
-function treasureBonus(){
-  // 把背包裡珍寶的百分比加成統計起來
-  var b={atk:0,def:0,hp:0,idle:0};
-  for(var nm in S.treasures){
-    if(S.treasures[nm]<=0)continue;
-    var t=WORLD.treasures.find(function(x){return x.name===nm;});
-    if(!t)continue;
-    var cnt=S.treasures[nm];
-    if(t.atk)b.atk+=t.atk*cnt;
-    if(t.def)b.def+=t.def*cnt;
-    if(t.hp)b.hp+=t.hp*cnt;
-    if(t.idle)b.idle+=t.idle*cnt;
+/* =====================================================================
+   7. 區域世界 / 怪物 AI（WANDER/CHASE/ATTACK/RETURN）
+   ===================================================================== */
+let world=null;
+function buildArea(area){
+ const Wd=area.bounds.w,Hd=area.bounds.h;
+ const w={area,entities:[],drops:[],bossKilled:!!S.areaBoss[area.id]};
+ const entry={type:"portal",wx:3,wy:3,target:"home",label:"回洞府"};
+ w.entities.push(entry);w.entry=entry;
+ player.wx=4;player.wy=4;
+ for(let i=0;i<area.spawns.npc;i++)w.entities.push({type:"npc",wx:rand(5,8),wy:rand(2,5)});
+ const depth=(wx,wy)=>clamp((wx+wy)/(Wd+Hd),0,1);
+ const place=m=>({wx:rand(m,Wd-m),wy:rand(m,Hd-m)});
+ for(let i=0;i<area.spawns.mob;i++){const p=place(2),df=depth(p.wx,p.wy);
+  const er=Math.round(area.erMin+(area.erMax-area.erMin)*df);
+  w.entities.push(makeMob(area,p.wx,p.wy,er,false,false));}
+ for(let i=0;i<area.spawns.elite;i++){const p=place(6),df=depth(p.wx,p.wy);
+  const er=Math.round(area.erMin+(area.erMax-area.erMin)*Math.max(df,0.5));
+  w.entities.push(makeMob(area,p.wx,p.wy,er,true,false));}
+ for(let i=0;i<area.spawns.chest;i++){const p=place(3);
+  w.entities.push({type:"chest",wx:p.wx,wy:p.wy,opened:false});}
+ for(let i=0;i<area.spawns.herb;i++){const p=place(2);w.entities.push({type:"herb",wx:p.wx,wy:p.wy});}
+ for(let i=0;i<area.spawns.enc;i++){const p=place(4);w.entities.push({type:"enc",wx:p.wx,wy:p.wy});}
+ if(!w.bossKilled)w.entities.push(makeMob(area,Wd-4,Hd-4,area.erMax,false,true));
+ const nextArea=AREAS.find(a=>a.id===area.id+1);
+ if(nextArea)w.entities.push({type:"portal",wx:Wd-3,wy:Hd-3,target:nextArea.id,
+   label:"前往"+nextArea.name,glow:true});
+ world=w;
+}
+function makeMob(area,wx,wy,er,elite,boss){
+ const em=boss?25:(elite?6:1);
+ const type=boss?null:area.mobTypes[Math.floor(Math.random()*area.mobTypes.length)];
+ const def=boss?BOSSES[area.boss]:MOBS[type];
+ const hp=enemyHp(er,em);
+ return {type:"mob",mobType:type,def,wx,wy,homeX:wx,homeY:wy,er,elite,boss,eliteMult:em,
+  hp,maxHp:hp,atk:enemyAtk(er,em),state:"WANDER",knock:0,hurtFlash:0,
+  scale:boss?1.5:(elite?1.2:1),seed:Math.random()*6,wanderT:0,wtx:wx,wty:wy,atkCd:0,
+  dead:false,respawnT:0,tauntShown:false};
+}
+function updateMobs(dt){
+ const u=TILE_W/2;
+ const aggro=180/u,leash=420/u,atkRange=70/u;
+ world.entities.forEach(m=>{
+  if(m.type!=="mob")return;
+  if(m.dead){m.respawnT-=dt;return;}
+  m.hurtFlash=Math.max(0,m.hurtFlash-dt*4);
+  m.knock*=Math.pow(0.001,dt);if(m.knock<0.01)m.knock=0;
+  const dx=player.wx-m.wx,dy=player.wy-m.wy,dist=Math.hypot(dx,dy);
+  const homeDist=Math.hypot(player.wx-m.homeX,player.wy-m.homeY);
+  if(m.state==="WANDER"){
+   if(dist<aggro)m.state="CHASE";
+   else{m.wanderT-=dt;if(m.wanderT<=0){m.wanderT=rand(1.5,3.5);
+     m.wtx=m.homeX+rand(-2,2);m.wty=m.homeY+rand(-2,2);}
+    moveTo(m,m.wtx,m.wty,COMBAT.moveSpeed*0.4*dt/u);}
+  }else if(m.state==="CHASE"){
+   if(homeDist>leash)m.state="RETURN";
+   else if(dist<atkRange){m.state="ATTACK";m.atkCd=0;}
+   else moveTo(m,player.wx,player.wy,COMBAT.moveSpeed*0.62*dt/u);
+  }else if(m.state==="ATTACK"){
+   if(dist>atkRange*1.3)m.state="CHASE";
+   else{m.atkCd-=dt;if(m.atkCd<=0){m.atkCd=1.1;mobHitPlayer(m);}}
+  }else if(m.state==="RETURN"){
+   moveTo(m,m.homeX,m.homeY,COMBAT.moveSpeed*0.5*dt/u);
+   if(Math.hypot(m.wx-m.homeX,m.wy-m.homeY)<0.4)m.state="WANDER";
   }
-  return b;
+ });
+ world.entities.forEach(m=>{
+  if(m.type==="mob"&&m.dead&&!m.boss&&m.respawnT<=0){
+   const far=Math.hypot(player.wx-m.homeX,player.wy-m.homeY)>9;
+   if(far){m.dead=false;m.hp=m.maxHp;m.state="WANDER";m.wx=m.homeX;m.wy=m.homeY;}
+   else m.respawnT=2;}
+ });
 }
-function playerAtk(){
-  var base=WORLD.realmStats[S.realm].atk;
-  var tb=treasureBonus();
-  return Math.round(base*(1+S.bonusAtkPct)*(1+tb.atk));
-}
-function playerDef(){
-  var tb=treasureBonus();
-  return Math.round(S.realm*8*(1+tb.def));
-}
-function playerMaxHp(){
-  var tb=treasureBonus();
-  return Math.round(WORLD.realmStats[S.realm].hp*(1+tb.hp));
-}
-function idlePerSec(){
-  var tb=treasureBonus();
-  return Math.round(WORLD.realmStats[S.realm].idlePerSec*(1+tb.idle));
-}
-function breakthroughCost(){return WORLD.realmStats[S.realm].breakthroughCost;}
-
-/* ---------- 5. DOM 快捷 ---------- */
-function $(id){return document.getElementById(id);}
-function el(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;}
-
-/* ---------- 6. Toast / Modal / Flash ---------- */
-function toast(msg){
-  var box=$("xx-toast");
-  var t=el("div","toast",msg);
-  box.appendChild(t);
-  setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },2300);
-}
-function modal(html){
-  $("modal-box").innerHTML=html;
-  $("xx-modal").classList.add("show");
-}
-function closeModal(){ $("xx-modal").classList.remove("show"); }
-$("xx-modal").addEventListener("click",function(e){ if(e.target.id==="xx-modal")closeModal(); });
-function flash(){
-  var f=$("xx-flash");f.classList.remove("show");void f.offsetWidth;f.classList.add("show");
-  setTimeout(function(){f.classList.remove("show");},900);
-}
-
-/* ---------- 7. 更新頂部狀態列 UI ---------- */
-function refreshStatus(){
-  var rs=WORLD.realmStats[S.realm];
-  $("ui-realm").textContent=WORLD.realms[S.realm].name;
-  $("ui-lv").textContent="Lv."+S.level;
-  $("ui-stone").textContent=fmt(S.stone);
-  var cost=breakthroughCost();
-  $("ui-qi-fill").style.width=clamp(S.qi/cost*100,0,100)+"%";
-  $("ui-qi-txt").textContent=fmt(S.qi)+"/"+fmt(cost);
-  $("ui-hp-fill").style.width=clamp(player.hp/playerMaxHp()*100,0,100)+"%";
-  $("ui-hp-txt").textContent=fmt(Math.max(0,player.hp))+"/"+fmt(playerMaxHp());
-  $("ui-exp-fill")&&($("ui-exp-fill").style.width="0%");
-  $("ui-atk").textContent=fmt(playerAtk());
-  $("ui-def").textContent=fmt(playerDef());
-  $("ui-exp").textContent=fmt(S.exp);
-  $("ui-kills").textContent=S.kills;
-  // 可突破時讓打坐分頁發光
-  var medTab=document.querySelector('.xx-tab[data-page="meditate"]');
-  if(S.qi>=cost && S.realm<9){ medTab.classList.add("glow"); $("ui-realm").style.boxShadow="0 0 14px rgba(255,210,90,1)"; }
-  else { medTab.classList.remove("glow"); $("ui-realm").style.boxShadow=""; }
-}
-
-/* =========================================================================
-   8. 打坐系統（放置）
-   ========================================================================= */
-var meditating=true;
-function setupMeditate(){
-  $("world-intro").textContent=WORLD.intro;
-  $("medi-realm-desc").textContent=WORLD.realms[S.realm].desc;
-  $("btn-medi-toggle").addEventListener("click",function(){
-    meditating=!meditating;
-    this.textContent=meditating?"暫停打坐":"開始打坐";
-    $("xx-meditate-stage").classList.toggle("medi-on",meditating);
-  });
-  $("btn-breakthrough").addEventListener("click",doBreakthrough);
-}
-function meditateTick(dt){
-  // dt 秒。靈氣每秒 += idlePerSec
-  if(meditating){
-    var gain=idlePerSec()*dt;
-    S.qi+=gain;
-    // 隨機冒靈氣數字（節流）
-    if(currentPage==="meditate" && Math.random()<dt*1.5){
-      spawnQiFloat("+"+fmt(idlePerSec()));
-    }
-  }
-}
-function spawnQiFloat(txt){
-  var stage=$("xx-meditate-stage");
-  var f=el("div","qi-float",txt);
-  f.style.left=(30+Math.random()*40)+"%";
-  f.style.top=(40+Math.random()*30)+"%";
-  stage.appendChild(f);
-  setTimeout(function(){if(f.parentNode)f.parentNode.removeChild(f);},1200);
-}
-function refreshMeditateUI(){
-  $("medi-rate").textContent="每秒回靈氣 +"+fmt(idlePerSec());
-  $("medi-realm-desc").textContent=WORLD.realms[S.realm].name+"："+WORLD.realms[S.realm].desc;
-  var cost=breakthroughCost();
-  var rs=WORLD.realmStats[S.realm];
-  if(S.realm>=9){
-    $("bt-info").textContent="已臻散仙之境，登仙路盡頭，唯有橫掃天地。";
-    $("btn-breakthrough").disabled=true;
-    $("bt-rate").textContent="";
-  } else if(S.qi>=cost){
-    $("bt-info").innerHTML="靈氣已滿！可突破至 <b style='color:#ffd86b'>"+WORLD.realms[S.realm+1].name+"</b>";
-    $("btn-breakthrough").disabled=false;
-    $("bt-rate").textContent="成功率 "+Math.round(rs.successRate*100)+"%（失敗損失 40% 靈氣）";
-  } else {
-    $("bt-info").innerHTML="突破需 <b>"+fmt(cost)+"</b> 靈氣，目前 "+fmt(S.qi)+"（還差 "+fmt(cost-S.qi)+"）";
-    $("btn-breakthrough").disabled=true;
-    $("bt-rate").textContent="下一境：成功率 "+Math.round(rs.successRate*100)+"%";
-  }
+function moveTo(m,tx,ty,sp){const dx=tx-m.wx,dy=ty-m.wy,d=Math.hypot(dx,dy);
+ if(d>0.05){m.wx+=dx/d*sp;m.wy+=dy/d*sp;}}
+function mobHitPlayer(m){
+ if(player.invuln>0||!sessionActive)return;
+ const dmg=Math.max(1,m.atk-playerDef());
+ player.hp-=dmg;player.hurtFlash=1;shake(3);
+ const sp=iso(player.wx,player.wy);
+ floatText("-"+fmt(dmg),sp.x,sp.y-44,"#ff6b6b",16);
+ if(player.hp<=0){player.hp=0;onDeath();}
 }
 
-/* =========================================================================
-   9. 突破系統
-   ========================================================================= */
-function doBreakthrough(){
-  if(S.realm>=9)return;
-  var cost=breakthroughCost();
-  if(S.qi<cost){ toast("靈氣不足，無法突破"); return; }
-  var rate=WORLD.realmStats[S.realm].successRate;
-  S.qi-=cost;
-  if(Math.random()<rate){
-    // 成功
-    S.realm++;
-    player.hp=playerMaxHp();
-    flash();
-    modal(
-      "<h2>✨ 突破成功 ✨</h2>"+
-      "<div class='big-em'>🌟</div>"+
-      "<p>金光大盛！你晉升至 <b style='color:#ffd86b'>"+WORLD.realms[S.realm].name+"</b>！<br>"+
-      WORLD.realms[S.realm].desc+"</p>"+
-      "<button class='btn gold' onclick='__xx.closeModal()'>繼續登仙</button>"
-    );
-    unlockRecipes();
-    save();
-  } else {
-    // 失敗：再扣 40% 已有靈氣（題目：失敗損失 40%）
-    var loss=Math.floor(S.qi*0.4);
-    S.qi-=loss;
-    modal(
-      "<h2>💥 突破失敗</h2>"+
-      "<div class='big-em'>😵</div>"+
-      "<p>靈氣暴走、經脈翻湧！突破失敗，額外損耗 <b style='color:#ff8a8a'>"+fmt(loss)+"</b> 靈氣。<br>穩住心神，再來一次！</p>"+
-      "<button class='btn red' onclick='__xx.closeModal()'>重整旗鼓</button>"
-    );
-    save();
-  }
-  refreshAll();
+/* =====================================================================
+   8. 玩家攻擊 / 技能 / 撿物
+   ===================================================================== */
+function dealDamage(m,dmg,crit){
+ if(m.dead)return;
+ m.hp-=dmg;m.hurtFlash=1;m.knock=0.35;hitstop(crit?50:32);
+ const sp=iso(m.wx,m.wy);
+ for(let i=0;i<4;i++)spawnParticle(sp.x,sp.y-14,rand(-40,40),rand(-60,-10),0.25,"#fff",2);
+ floatText((crit?"暴!":"")+"-"+fmt(dmg),sp.x+rand(-8,8),sp.y-30,crit?"#ffd86b":"#fff",crit?20:14);
+ if(crit)shake(5);
+ if(m.hp<=0)killMob(m);else registerCombo();
 }
-
-/* =========================================================================
-   10. 戰鬥系統（2.5D 等角 Canvas）
-   ========================================================================= */
-var cv=$("xx-canvas"), ctx=cv.getContext("2d");
-var CW=720, CH=900;             // 邏輯解析度
-var TILE_W=88, TILE_H=44;       // 等角地磚寬高半
-var GRID=9;                     // 地圖格數
-// 玩家戰鬥實體
-var player={ x:0, y:0, hp:100, facing:{x:1,y:0}, atkCd:0 };
-var enemies=[], projectiles=[], particles=[], floatTexts=[];
-var skillCd=[0,0,0]; // 三技能冷卻 ms
-var waveCleared=false;
-
-// 世界座標 → 螢幕座標（等角投影）
-function worldToScreen(wx,wy){
-  // wx,wy 為格子座標（可小數）。中心對齊畫布中上
-  var ox=CW/2, oy=170;
-  return {
-    x:ox+(wx-wy)*TILE_W/2,
-    y:oy+(wx+wy)*TILE_H/2
-  };
+function killMob(m){
+ m.dead=true;m.respawnT=90;m.state="WANDER";
+ registerCombo();registerKillStreak();
+ const exp=expPerKill(m.er)*(m.boss?20:(m.elite?5:1));
+ S.exp+=exp;addQi(expToQi(exp,S.realm));
+ // 戰鬥熟練度（ATK 加成）只增不減；達上限後把 exp 鎖在 0，避免存檔無限膨脹
+ if(S.combatBonus<0.5){const need=breakCost()*0.5;
+  while(S.exp>=need&&S.combatBonus<0.5){S.exp-=need;S.combatBonus=Math.min(0.5,S.combatBonus+0.02);
+   floatText("熟練度↑ ATK+2%",W/2,H*0.4,"#7df0da",13);}}
+ else S.exp=0;
+ let stones=stoneGain(m.er,m.eliteMult);
+ const cl=S.daily.clears||{};
+ if((cl[world.area.id]||0)<3&&(m.boss||m.elite))stones*=2;
+ spawnDrop(m.wx,m.wy,"stone",stones);
+ if(Math.random()<0.5)spawnDrop(m.wx,m.wy,"herb",1);
+ const rRoll=Math.random();
+ if(rRoll<(m.boss?0.6:m.elite?0.12:0.03))spawnDrop(m.wx,m.wy,"treasure",rollRareDropTier(m));
+ if(m.mobType){if(!S.areaClear[world.area.id])S.areaClear[world.area.id]={kinds:{},chests:0};
+  S.areaClear[world.area.id].kinds[m.mobType]=true;}
+ if(m.boss){world.bossKilled=true;S.areaBoss[world.area.id]=true;
+  unlockMilestone("boss_"+world.area.id,"⚔️ 斬殺 "+m.def.name);
+  banner("Boss 斬殺！","#ff5a6a");hitstop(120);shake(10);}
+ questProgress("kill",1);if(m.boss)questProgress("boss",1);
+ updateAreaClearAndUnlock();saveGame();
 }
-function initBattle(){
-  // 依玩家境界決定怪物階（-1~+1 浮動）
-  spawnWave();
-  player.x=GRID/2; player.y=GRID/2;
-  player.hp=playerMaxHp();
-}
-function spawnWave(){
-  enemies=[]; projectiles=[]; particles=[]; floatTexts=[]; waveCleared=false;
-  var pr=S.realm;
-  var n=5+Math.floor(Math.random()*3); // 5-7 隻
-  // 每場 10% 出 Boss
-  var bossWave=Math.random()<0.18;
-  for(var i=0;i<n;i++){
-    var enemyRealm=clamp(pr+Math.floor(rnd(-1,1.99)),0,9);
-    var elite=Math.random()<0.15?6:1; // 精英機率
-    var em=WORLD.mobs[Math.floor(Math.random()*WORLD.mobs.length)];
-    addEnemy(em,enemyRealm,elite,false);
-  }
-  if(bossWave){
-    var bd=WORLD.bosses[Math.floor(Math.random()*WORLD.bosses.length)];
-    addEnemy({name:bd.name,em:bd.em,c:"#ff5a5a"},clamp(pr,0,9),25,true,bd);
-    toast("⚠️ "+bd.name+" 現身！");
-  }
-}
-function addEnemy(em,realm,eliteMult,isBoss,bossData){
-  var ang=Math.random()*Math.PI*2, r=2.5+Math.random()*1.5;
-  var hp=Math.round(60*Math.pow(2.6,realm)*eliteMult);
-  enemies.push({
-    name:em.name, em:em.em, color:em.c,
-    realm:realm, elite:eliteMult, isBoss:!!isBoss, boss:bossData||null,
-    x:clamp(GRID/2+Math.cos(ang)*r,0.5,GRID-0.5),
-    y:clamp(GRID/2+Math.sin(ang)*r,0.5,GRID-0.5),
-    hp:hp, maxHp:hp,
-    atk:Math.round(6*Math.pow(2.4,realm)*eliteMult),
-    atkCd:0, hitFlash:0, knock:{x:0,y:0}, size:isBoss?1.6:(eliteMult>1?1.25:1)
-  });
-}
-
-// 搖桿輸入向量（-1~1）
-var moveVec={x:0,y:0};
-var keys={};
-
-function battleUpdate(dt){
-  if(currentPage!=="battle")return;
-  var ms=dt*1000;
-  // --- 玩家移動 ---
-  var mv={x:moveVec.x,y:moveVec.y};
-  // 桌機鍵盤
-  if(keys["w"]||keys["arrowup"])mv.y-=1;
-  if(keys["s"]||keys["arrowdown"])mv.y+=1;
-  if(keys["a"]||keys["arrowleft"])mv.x-=1;
-  if(keys["d"]||keys["arrowright"])mv.x+=1;
-  var len=Math.hypot(mv.x,mv.y);
-  if(len>0.01){
-    var nx=mv.x/len, ny=mv.y/len;
-    // 等角：螢幕方向轉世界方向（螢幕右下=世界y+，右上=世界x+）
-    // 把螢幕向量映射到等角格子位移
-    var speed=220/((TILE_W+TILE_H)/2)*dt; // 換算成格/秒概念
-    var wdx=(nx/(TILE_W/2)+ny/(TILE_H/2))/2;
-    var wdy=(ny/(TILE_H/2)-nx/(TILE_W/2))/2;
-    var wl=Math.hypot(wdx,wdy)||1;
-    var mspd=4.2*dt;
-    player.x=clamp(player.x+wdx/wl*mspd,0.3,GRID-0.3);
-    player.y=clamp(player.y+wdy/wl*mspd,0.3,GRID-0.3);
-    player.facing={x:wdx/wl,y:wdy/wl};
-  }
-  // --- 普攻冷卻 ---
-  if(player.atkCd>0)player.atkCd-=ms;
-  // --- 技能冷卻 ---
-  for(var i=0;i<3;i++)if(skillCd[i]>0)skillCd[i]-=ms;
-  // 長按普攻
-  if(atkHeld && player.atkCd<=0)doAttack();
-  // --- 敵人 AI ---
-  var prange=0.55; // 攻擊距離（格）
-  for(var e=enemies.length-1;e>=0;e--){
-    var en=enemies[e];
-    if(en.hitFlash>0)en.hitFlash-=ms;
-    // 擊退衰減
-    en.x+=en.knock.x; en.y+=en.knock.y;
-    en.knock.x*=0.8; en.knock.y*=0.8;
-    en.x=clamp(en.x,0.3,GRID-0.3); en.y=clamp(en.y,0.3,GRID-0.3);
-    var dx=player.x-en.x, dy=player.y-en.y, d=Math.hypot(dx,dy);
-    if(d>prange){
-      // 朝玩家移動
-      var es=(en.isBoss?1.6:2.4)*dt;
-      en.x+=dx/d*es; en.y+=dy/d*es;
-    } else {
-      // 攻擊玩家
-      if(en.atkCd>0)en.atkCd-=ms;
-      else {
-        en.atkCd=1100;
-        var dmg=Math.max(1,en.atk-playerDef());
-        player.hp-=dmg;
-        addParticles(player.x,player.y,"#ff5a5a",6);
-        floatTexts.push({wx:player.x,wy:player.y-0.5,txt:"-"+fmt(dmg),c:"#ff6b6b",life:800,vy:-0.4});
-        if(player.hp<=0){ onPlayerDown(); return; }
-      }
-    }
-  }
-  // --- 投射物（御劍斬劍氣） ---
-  for(var p=projectiles.length-1;p>=0;p--){
-    var pr=projectiles[p];
-    pr.x+=pr.vx*dt; pr.y+=pr.vy*dt; pr.life-=ms;
-    // 命中
-    for(var e2=enemies.length-1;e2>=0;e2--){
-      var en2=enemies[e2];
-      if(Math.hypot(en2.x-pr.x,en2.y-pr.y)<0.6){
-        if(!pr.hitSet)pr.hitSet={};
-        if(!pr.hitSet[e2]){ pr.hitSet[e2]=1; hitEnemy(en2,pr.dmg,pr.vx,pr.vy); }
-      }
-    }
-    if(pr.life<=0||pr.x<-1||pr.x>GRID+1||pr.y<-1||pr.y>GRID+1)projectiles.splice(p,1);
-  }
-  // --- 粒子 / 飄字 ---
-  for(var pa=particles.length-1;pa>=0;pa--){
-    var P=particles[pa]; P.x+=P.vx*dt; P.y+=P.vy*dt; P.life-=ms; if(P.life<=0)particles.splice(pa,1);
-  }
-  for(var ft=floatTexts.length-1;ft>=0;ft--){
-    var F=floatTexts[ft]; F.wy+=F.vy*dt; F.life-=ms; if(F.life<=0)floatTexts.splice(ft,1);
-  }
-  // --- 清場結算 ---
-  if(enemies.length===0 && !waveCleared){
-    waveCleared=true;
-    onWaveClear();
-  }
-}
+function rollRareDropTier(m){
+ for(let i=RARITY.length-1;i>=0;i--){if(Math.random()<RARITY[i].chance*(m.boss?4:1))return RARITY[i].t;}
+ return 1;}
+const combo={n:0,timer:0};
+function registerCombo(){combo.n++;combo.timer=5;
+ const el=$("xx-combo");el.style.display="block";
+ el.querySelector(".n").textContent="×"+combo.n;
+ el.querySelector(".n").style.fontSize=clamp(30+combo.n*1.4,30,64)+"px";}
+const streak={n:0,timer:0,atkBuff:0};
+function registerKillStreak(){streak.n++;streak.timer=8;
+ if(streak.n===5)banner("連殺！","#f5d27a");
+ if(streak.n===10){banner("無雙！","#ffd86b");streak.atkBuff=4;}
+ if(streak.n===20){banner("屠戮！","#ff5a6a");streak.atkBuff=6;}}
 
 function doAttack(){
-  if(player.atkCd>0)return;
-  player.atkCd=450;
-  var range=70/((TILE_W+TILE_H)/2*0.5)*0.55; // 攻擊半徑（格）
-  var atk=playerAtk();
-  var hitAny=false;
-  for(var e=0;e<enemies.length;e++){
-    var en=enemies[e];
-    if(Math.hypot(en.x-player.x,en.y-player.y)<1.1){
-      hitEnemy(en,atk,player.facing.x,player.facing.y);
-      hitAny=true;
-    }
-  }
-  // 揮砍粒子
-  addParticles(player.x+player.facing.x*0.6,player.y+player.facing.y*0.6,"#fff",4);
+ if(player.atkTimer>0||!sessionActive)return;
+ player.atkTimer=COMBAT.atkCdMs/1000;player.attacking=0.2;
+ player.facing=(player.dir.x-player.dir.y)>=0?1:-1;
+ const range=COMBAT.atkRange/(TILE_W/2);
+ const dmg=Math.round(playerAtk()*(1+(streak.atkBuff?0.2:0)));
+ nearbyMobs(range).forEach(m=>{const crit=Math.random()<0.18;
+  dealDamage(m,Math.round(dmg*(crit?1.8:1)),crit);});
+}
+function nearbyMobs(range){const arr=[];
+ world.entities.forEach(m=>{if(m.type==="mob"&&!m.dead&&
+  Math.hypot(m.wx-player.wx,m.wy-player.wy)<=range)arr.push(m);});return arr;}
+const skillCd=[0,0,0,0];
+// 劍陣（御劍轟擊）：由 dt 驅動、每 0.33 秒造成一次傷害、最多 2 秒；提前宣告以免在 useSkill 中參照到尚未初始化的變數
+const swordArrays=[];
+function useSkill(idx){
+ if(!sessionActive)return;
+ const sk=SKILLS[idx];if(skillCd[idx]>0)return;
+ if(S.qi<sk.qi){flashSkillDim(idx);return;}
+ S.qi=Math.max(0,S.qi-sk.qi);skillCd[idx]=sk.cd/1000;
+ const dmg=playerAtk()*sk.mult,sp=iso(player.wx,player.wy),dir=player.dir;
+ if(sk.kind==="line"){
+  effects.push({kind:"slash",x:sp.x,y:sp.y-14,ang:Math.atan2(dir.y,dir.x)*0+Math.atan2((dir.x+dir.y)*TILE_H,(dir.x-dir.y)*TILE_W),life:0.4,max:0.4});
+  world.entities.forEach(m=>{if(m.type==="mob"&&!m.dead){
+   const rx=m.wx-player.wx,ry=m.wy-player.wy,d=Math.hypot(rx,ry);
+   if(d<8&&(rx*dir.x+ry*dir.y)/(d||1)>0.4)dealDamage(m,Math.round(dmg),false);}});
+ }else if(sk.kind==="aoe"){
+  const tx=player.wx+dir.x*3,ty=player.wy+dir.y*3,tp=iso(tx,ty);
+  effects.push({kind:"thunder",x:tp.x,y:tp.y,life:0.45,max:0.45});shake(7);
+  world.entities.forEach(m=>{if(m.type==="mob"&&!m.dead&&Math.hypot(m.wx-tx,m.wy-ty)<2.2){
+   dealDamage(m,Math.round(dmg),true);m.state="WANDER";m.atkCd=0.5;}});
+  for(let i=0;i<14;i++)spawnParticle(tp.x,tp.y,rand(-80,80),rand(-30,-120),0.4,"#bfe6ff",3);
+ }else if(sk.kind==="ring"){
+  // 修：原本用 setInterval 會在切場景/重進歷練後殘留並對舊世界開刀（計時器疊加）。
+  // 改成由主迴圈 dt 驅動的「劍陣」物件，綁定當前 world，life 到 0 自動消失，絕不疊加。
+  swordArrays.push({life:2,max:2,tick:0,world,dmg:Math.round(playerAtk())});
+  effects.push({kind:"sword_array",x:sp.x,y:sp.y-14,life:2,max:2});
+  shake(4);
+ }else if(sk.kind==="dash"){
+  player.wx+=dir.x*4;player.wy+=dir.y*4;clampPlayer();player.invuln=0.4;
+  for(let i=0;i<8;i++)spawnParticle(sp.x,sp.y-14,rand(-60,60),rand(-40,40),0.3,"#b78cf0",3);
+  world.entities.forEach(m=>{if(m.type==="mob"&&!m.dead&&
+   Math.hypot(m.wx-player.wx,m.wy-player.wy)<2)dealDamage(m,Math.round(playerAtk()),false);});
+ }
+}
+function flashSkillDim(idx){const el=$("xx-s"+idx);el.style.borderColor="#ff5a6a";
+ setTimeout(()=>el.style.borderColor="",250);}
+
+function spawnDrop(wx,wy,kind,val){world.drops.push({wx,wy,kind,val,t:0,flying:false,
+ emoji:kind==="stone"?"💎":kind==="herb"?"🌿":"✨"});}
+function updateDrops(dt){
+ const pick=55/(TILE_W/2);
+ for(let i=world.drops.length-1;i>=0;i--){const d=world.drops[i];d.t+=dt;
+  const dist=Math.hypot(d.wx-player.wx,d.wy-player.wy);
+  if(dist<pick||d.flying){d.flying=true;
+   const dx=player.wx-d.wx,dy=player.wy-d.wy,dd=Math.hypot(dx,dy),sp=600/(TILE_W/2)*dt;
+   if(dd<0.3){collectDrop(d);world.drops.splice(i,1);}else{d.wx+=dx/dd*sp;d.wy+=dy/dd*sp;}}}
+}
+function collectDrop(d){const sp=iso(player.wx,player.wy);
+ if(d.kind==="stone"){S.stones+=d.val;floatText("+"+fmt(d.val)+" 靈石",sp.x,sp.y-40,"#6ee787",14);}
+ else if(d.kind==="herb"){addItem("herb","herb"+herbGrade(),1);
+  floatText("+靈草",sp.x,sp.y-40,"#6ee787",13);}
+ else if(d.kind==="treasure"){addItem("treasure","drop"+d.val,1,{name:RARITY_NAMES[d.val-1]+"掉落",emoji:"✨"});rareDropShow(d.val);}
+}
+function herbGrade(){return clamp(world.area.erMin+1,1,6);}
+function rareDropShow(tier){const sp=iso(player.wx,player.wy);
+ if(tier>=4){FX.goldBeam=0.6;slowmo(300);shake(8);
+  banner(tier===5?"仙品！":"極品！",RARITY_COLOR[tier-1]);
+  for(let i=0;i<30;i++)spawnParticle(sp.x,sp.y-20,rand(-100,100),rand(-180,-40),0.8,RARITY_COLOR[tier-1],3,200);}
+ else{floatText(RARITY_NAMES[tier-1]+"掉落!",sp.x,sp.y-40,RARITY_COLOR[tier-1],15);shake(3);}
+ unlockMilestone("rare"+tier,"✨ 獲得"+RARITY_NAMES[tier-1]+"掉落");}
+
+/* =====================================================================
+   9. 視覺特效層
+   ===================================================================== */
+const effects=[];
+function updateSwordArrays(dt){
+ for(let i=swordArrays.length-1;i>=0;i--){const sa=swordArrays[i];
+  // 綁定的世界已被換掉（重進歷練/切場景）或已退出歷練 → 直接作廢，不對新世界開刀
+  if(!sessionActive||sa.world!==world){swordArrays.splice(i,1);continue;}
+  sa.life-=dt;sa.tick-=dt;
+  if(sa.tick<=0){sa.tick=0.33;
+   world.entities.forEach(m=>{if(m.type==="mob"&&!m.dead&&
+    Math.hypot(m.wx-player.wx,m.wy-player.wy)<3.2)dealDamage(m,sa.dmg,false);});}
+  if(sa.life<=0)swordArrays.splice(i,1);}
+}
+function updateEffects(dt){for(let i=effects.length-1;i>=0;i--){effects[i].life-=dt;
+ if(effects[i].life<=0)effects.splice(i,1);}}
+function drawEffects(){
+ effects.forEach(e=>{const a=e.life/e.max;
+  if(e.kind==="slash"){ctx.save();ctx.translate(e.x,e.y);ctx.rotate(e.ang);
+   ctx.globalAlpha=a;ctx.strokeStyle="#cfe6ff";ctx.lineWidth=5;
+   ctx.beginPath();ctx.arc(40,0,40,-0.6,0.6);ctx.stroke();
+   ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();ctx.restore();}
+  else if(e.kind==="thunder"){ctx.save();ctx.globalAlpha=a;ctx.strokeStyle="#dff";ctx.lineWidth=4;
+   ctx.beginPath();ctx.moveTo(e.x,e.y-200);let yy=e.y-200;
+   while(yy<e.y){ctx.lineTo(e.x+rand(-12,12),yy);yy+=18;}ctx.lineTo(e.x,e.y);ctx.stroke();
+   ctx.fillStyle="rgba(180,230,255,"+(a*0.5)+")";
+   ctx.beginPath();ctx.ellipse(e.x,e.y,60*(1-a)+20,20*(1-a)+8,0,0,7);ctx.fill();ctx.restore();}
+  else if(e.kind==="sword_array"){ctx.save();ctx.globalAlpha=a*0.9;ctx.translate(e.x,e.y);
+   const R=70;ctx.strokeStyle="#b78cf0";ctx.lineWidth=2;
+   for(let k=0;k<6;k++){const ang=performance.now()/300+k*Math.PI/3;
+    const x=Math.cos(ang)*R,y=Math.sin(ang)*R*0.5;
+    ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.fillStyle="#cfe6ff";
+    ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(2,4);ctx.lineTo(-2,4);ctx.closePath();ctx.fill();ctx.restore();}
+   ctx.beginPath();ctx.arc(0,0,R,0,7);ctx.stroke();ctx.restore();}
+ });
 }
 
-function castSkill(idx){
-  // idx 0,1,2 對應三顆技能鈕 = 御劍斬 / 五雷轟頂 / 太虛劍陣
-  var def=WORLD.skills[idx];
-  if(!def||idx>2)return;          // 只接受 0~2，防呆
-  if(skillCd[idx]>0)return;
-  if(S.qi<def.qiCost){ toast("靈氣不足"); return; }
-  S.qi-=def.qiCost;
-  skillCd[idx]=def.cooldownMs;
-  var atk=playerAtk();
-  if(idx===0){
-    // 御劍斬：射出穿透劍氣
-    var f=player.facing;
-    projectiles.push({x:player.x,y:player.y,vx:f.x*9,vy:f.y*9,dmg:Math.round(atk*def.dmgMult),life:700,hitSet:{}});
-    addParticles(player.x,player.y,"#5f9dff",8);
-  } else if(idx===1){
-    // 五雷轟頂：以玩家面前一點為中心範圍打擊
-    var cx=player.x+player.facing.x*1.5, cy=player.y+player.facing.y*1.5;
-    for(var e=0;e<enemies.length;e++){
-      var en=enemies[e];
-      if(Math.hypot(en.x-cx,en.y-cy)<1.6){ hitEnemy(en,Math.round(atk*def.dmgMult),en.x-player.x,en.y-player.y); }
-    }
-    for(var k=0;k<18;k++)addParticles(cx+rnd(-1,1),cy+rnd(-1,1),"#c45fff",1);
-    floatTexts.push({wx:cx,wy:cy-1,txt:"⚡五雷轟頂",c:"#c45fff",life:700,vy:-0.3});
-  } else if(idx===2){
-    // 太虛劍陣：以玩家為中心全範圍多段傷害
-    for(var e3=0;e3<enemies.length;e3++){
-      var en3=enemies[e3];
-      if(Math.hypot(en3.x-player.x,en3.y-player.y)<2.6){ hitEnemy(en3,Math.round(atk*def.dmgMult),en3.x-player.x,en3.y-player.y); }
-    }
-    for(var k2=0;k2<30;k2++){var a=Math.random()*6.28,rr=Math.random()*2.2;addParticles(player.x+Math.cos(a)*rr,player.y+Math.sin(a)*rr,"#ffd86b",1);}
-    floatTexts.push({wx:player.x,wy:player.y-1.5,txt:"🌀太虛劍陣",c:"#ffd86b",life:900,vy:-0.3});
-  }
+/* =====================================================================
+   10. 場景切換（SceneManager：只切 DOM，不重置 gameState）
+   ===================================================================== */
+let MODE="home",SUB="home";
+const SCENES={home:"sc-home",meditate:"sc-meditate","explore-menu":"sc-explore-menu",
+ alchemy:"sc-alchemy",auction:"sc-auction",inventory:"sc-inventory",quests:"sc-quests"};
+function showScene(name){Object.values(SCENES).forEach(id=>$(id).classList.remove("on"));
+ if(SCENES[name])$(SCENES[name]).classList.add("on");}
+function setTab(active){document.querySelectorAll("#xx-tabs button").forEach(b=>
+ b.classList.toggle("on",b.dataset.tab===active));}
+function gotoScene(name){
+ if(name==="explore-menu")buildAreaList();
+ SUB=name;MODE="home";root.classList.remove("in-explore");
+ showScene(name);setTab(name);
+ if(name==="meditate"){S.pickedMeditate=true;renderMeditate();}
+ if(name==="alchemy")renderAlchemy();
+ if(name==="auction")enterAuction();
+ if(name==="inventory")renderInventory("pill");
+ if(name==="quests")renderQuests();
+ if(name==="home")updateDailyTip();
+ saveGame();
 }
+document.querySelectorAll("#xx-tabs button").forEach(b=>b.addEventListener("click",()=>gotoScene(b.dataset.tab)));
+document.querySelectorAll("#sc-home [data-go]").forEach(b=>b.addEventListener("click",()=>gotoScene(b.dataset.go)));
 
-function hitEnemy(en,dmg,dirx,diry){
-  en.hp-=dmg; en.hitFlash=160;
-  // 擊退
-  var l=Math.hypot(dirx,diry)||1;
-  en.knock.x+=dirx/l*0.18; en.knock.y+=diry/l*0.18;
-  addParticles(en.x,en.y,"#fff",5);
-  floatTexts.push({wx:en.x,wy:en.y-0.8,txt:fmt(dmg),c:"#fff3a0",life:600,vy:-0.5});
-  if(en.hp<=0)killEnemy(en);
+/* =====================================================================
+   11. 歷練 SESSION 狀態機（切頁=暫停不結束、單調不倒退）
+   ===================================================================== */
+let sessionActive=false;
+function enterExplore(areaId){
+ const area=AREAS.find(a=>a.id===areaId);if(!area)return;
+ if(!areaUnlocked(area)){modal("尚未解鎖","需求："+areaReq(area),[{t:"知道了",f:closeModal}]);return;}
+ buildArea(area);
+ player.maxHp=playerMaxHp();player.hp=playerMaxHp();player.invuln=0;player.hurtFlash=0;
+ sessionActive=true;MODE="explore";SUB="explore";
+ root.classList.add("in-explore");showScene(null);
+ $("xx-area").textContent=area.name;$("xx-death").classList.remove("on");
+ saveGame();
 }
-function killEnemy(en){
-  var idx=enemies.indexOf(en);
-  if(idx<0)return;
-  enemies.splice(idx,1);
-  // 結算經驗、靈氣、靈石
-  var expGain=Math.round(8*Math.pow(1.5,en.realm))*(en.isBoss?20:(en.elite>1?5:1));
-  S.exp+=expGain;
-  var qiGain=Math.round(expGain*(1+S.realm*0.15));
-  S.qi+=qiGain;
-  var stoneGain=Math.round(3*Math.pow(1.7,en.realm))*en.elite;
-  S.stone+=stoneGain;
-  S.kills++;
-  // 戰鬥熟練度：每累積 cost*0.5 經驗 +2% atk（上限+50%）
-  var thresh=breakthroughCost()*0.5;
-  if(S.exp>=thresh && S.bonusAtkPct<0.5){
-    S.exp-=thresh; S.bonusAtkPct=Math.min(0.5,S.bonusAtkPct+0.02);
-    toast("⚔️ 戰鬥熟練度提升！攻擊 +2%");
-  }
-  // 掉靈草（30%）
-  if(Math.random()<0.3){
-    var hi=clamp(en.realm,0,5);
-    S.herbs[hi]=(S.herbs[hi]||0)+1;
-  }
-  addParticles(en.x,en.y,en.color,12);
-  floatTexts.push({wx:en.x,wy:en.y-1,txt:"+"+fmt(qiGain)+"靈氣 +"+fmt(stoneGain)+"🪙",c:"#7fffd4",life:900,vy:-0.5});
-  refreshStatus();
-}
-function onWaveClear(){
-  // 清場獎勵（總靈石的 20%，每日前 3 次雙倍）
-  if(S.clearCountDay!==todayStr()){ S.clearCountDay=todayStr(); S.clearCount=0; }
-  var dbl=S.clearCount<3?2:1;
-  var bonus=Math.round(rnd(30,80)*Math.pow(1.7,S.realm))*dbl;
-  S.stone+=bonus; S.clearCount++;
-  // 10% 奇遇寶箱
-  if(Math.random()<0.12){
-    var ev=Math.round(50*Math.pow(1.8,S.realm));
-    S.stone+=ev;
-    toast("🎁 奇遇寶箱！額外 +"+fmt(ev)+" 靈石");
-  }
-  save();
-  setTimeout(function(){
-    if(currentPage==="battle"){
-      toast("✅ 清場！+"+fmt(bonus)+" 靈石"+(dbl>1?"（雙倍）":""));
-      spawnWave();
-    }
-  },900);
-}
-function onPlayerDown(){
-  player.hp=1;
-  // 嘗試自動吃回氣丹
-  var key="回氣丹|1";
-  if(S.pills[key]&&S.pills[key]>0){
-    S.pills[key]--; player.hp=playerMaxHp();
-    toast("💊 自動服用回氣丹，滿血續戰！");
-  } else {
-    toast("💀 重傷敗退！靈石損失少許");
-    S.stone=Math.floor(S.stone*0.9);
-    player.hp=playerMaxHp();
-    spawnWave();
-  }
-  refreshStatus();
-}
-
-function addParticles(wx,wy,color,n){
-  for(var i=0;i<n;i++){
-    var a=Math.random()*6.28,s=rnd(0.5,2.5);
-    particles.push({x:wx,y:wy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(250,500),color:color});
-  }
-}
-
-/* ---- 戰鬥繪製 ---- */
-function drawBattle(){
-  ctx.clearRect(0,0,CW,CH);
-  // 背景
-  var g=ctx.createRadialGradient(CW/2,300,50,CW/2,400,600);
-  g.addColorStop(0,"#2a1f4a"); g.addColorStop(1,"#0d0820");
-  ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH);
-  // 等角地磚
-  for(var i=0;i<GRID;i++)for(var j=0;j<GRID;j++){
-    var s=worldToScreen(i,j);
-    drawTile(s.x,s.y,(i+j)%2===0?"#3a2d5e":"#332650");
-  }
-  // 收集所有可繪物，依 y 排序（畫家演算法做出前後遮擋）
-  var drawList=[];
-  enemies.forEach(function(en){ drawList.push({wy:en.x+en.y,type:"enemy",ref:en}); });
-  drawList.push({wy:player.x+player.y,type:"player"});
-  drawList.sort(function(a,b){return a.wy-b.wy;});
-  // 投射物（先畫在地上）
-  projectiles.forEach(function(pr){
-    var s=worldToScreen(pr.x,pr.y);
-    ctx.save();ctx.globalAlpha=.9;
-    ctx.fillStyle="#7fd4ff";ctx.shadowColor="#5f9dff";ctx.shadowBlur=14;
-    ctx.beginPath();ctx.ellipse(s.x,s.y,16,7,Math.atan2(pr.vy,pr.vx),0,6.28);ctx.fill();
-    ctx.restore();
-  });
-  // 角色與敵人
-  drawList.forEach(function(d){
-    if(d.type==="enemy")drawEnemy(d.ref);
-    else drawPlayer();
-  });
-  // 粒子
-  particles.forEach(function(P){
-    var s=worldToScreen(P.x,P.y);
-    ctx.globalAlpha=clamp(P.life/400,0,1);
-    ctx.fillStyle=P.color;
-    ctx.beginPath();ctx.arc(s.x,s.y-20,3,0,6.28);ctx.fill();
-  });
-  ctx.globalAlpha=1;
-  // 飄字
-  floatTexts.forEach(function(F){
-    var s=worldToScreen(F.wx,F.wy);
-    ctx.globalAlpha=clamp(F.life/600,0,1);
-    ctx.font="bold 22px sans-serif";ctx.textAlign="center";
-    ctx.fillStyle=F.c;ctx.strokeStyle="#000";ctx.lineWidth=3;
-    ctx.strokeText(F.txt,s.x,s.y-30);ctx.fillText(F.txt,s.x,s.y-30);
-  });
-  ctx.globalAlpha=1;
-  // 提示文字
-  ctx.font="14px sans-serif";ctx.textAlign="left";ctx.fillStyle="rgba(255,255,255,.5)";
-  ctx.fillText("敵 "+enemies.length+" 隻 · 搖桿走位，靠近普攻",16,28);
-}
-function drawTile(x,y,color){
-  ctx.beginPath();
-  ctx.moveTo(x,y-TILE_H/2);
-  ctx.lineTo(x+TILE_W/2,y);
-  ctx.lineTo(x,y+TILE_H/2);
-  ctx.lineTo(x-TILE_W/2,y);
-  ctx.closePath();
-  ctx.fillStyle=color;ctx.fill();
-  ctx.strokeStyle="rgba(255,255,255,.05)";ctx.lineWidth=1;ctx.stroke();
-}
-function drawShadow(x,y,r){
-  ctx.save();ctx.globalAlpha=.35;ctx.fillStyle="#000";
-  ctx.beginPath();ctx.ellipse(x,y,r,r*0.42,0,0,6.28);ctx.fill();ctx.restore();
-}
-function drawPlayer(){
-  var s=worldToScreen(player.x,player.y);
-  drawShadow(s.x,s.y,22);
-  // 發光光環
-  ctx.save();
-  ctx.shadowColor="#5fe6ff";ctx.shadowBlur=18;
-  ctx.font="46px sans-serif";ctx.textAlign="center";ctx.textBaseline="alphabetic";
-  ctx.fillText("🧙",s.x,s.y-8);
-  ctx.restore();
-  // 朝向小箭頭
-  ctx.save();ctx.globalAlpha=.6;
-  var fs=worldToScreen(player.x+player.facing.x*0.7,player.y+player.facing.y*0.7);
-  ctx.strokeStyle="#7fffd4";ctx.lineWidth=3;
-  ctx.beginPath();ctx.moveTo(s.x,s.y-20);ctx.lineTo(fs.x,fs.y-20);ctx.stroke();ctx.restore();
-}
-function drawEnemy(en){
-  var s=worldToScreen(en.x,en.y);
-  drawShadow(s.x,s.y,18*en.size);
-  ctx.save();
-  if(en.hitFlash>0){ctx.globalAlpha=0.7;ctx.shadowColor="#fff";ctx.shadowBlur=20;}
-  else if(en.isBoss){ctx.shadowColor="#ff3c3c";ctx.shadowBlur=16;}
-  ctx.font=(34*en.size)+"px sans-serif";ctx.textAlign="center";
-  ctx.fillText(en.em,s.x,s.y-6);
-  ctx.restore();
-  // 血條
-  var bw=34*en.size, bh=5;
-  var bx=s.x-bw/2, by=s.y-38*en.size;
-  ctx.fillStyle="rgba(0,0,0,.6)";ctx.fillRect(bx,by,bw,bh);
-  ctx.fillStyle=en.isBoss?"#ff3c5e":(en.elite>1?"#ffb13c":"#6bd43c");
-  ctx.fillRect(bx,by,bw*clamp(en.hp/en.maxHp,0,1),bh);
-  // 名稱
-  ctx.font="11px sans-serif";ctx.textAlign="center";
-  ctx.fillStyle=en.isBoss?"#ff8a8a":"rgba(255,255,255,.75)";
-  ctx.fillText((en.elite>1&&!en.isBoss?"【精英】":"")+en.name,s.x,by-3);
-}
-
-/* =========================================================================
-   11. 搖桿 + 按鈕 控制（pointer events 同時吃觸控與滑鼠）
-   ========================================================================= */
-var joyActive=false, joyId=null, joyCenter={x:0,y:0};
-var atkHeld=false;
-function setupControls(){
-  var joy=$("xx-joy"), knob=$("xx-joy-knob");
-  function joyStart(e){
-    joyActive=true; joyId=e.pointerId;
-    var r=joy.getBoundingClientRect();
-    joyCenter={x:r.left+r.width/2, y:r.top+r.height/2};
-    joyMove(e);
-  }
-  function joyMove(e){
-    if(!joyActive||e.pointerId!==joyId)return;
-    var dx=e.clientX-joyCenter.x, dy=e.clientY-joyCenter.y;
-    var d=Math.hypot(dx,dy), max=46, dead=10;
-    if(d<dead){ moveVec={x:0,y:0}; knob.style.transform="translate(0,0)"; return; }
-    var cd=Math.min(d,max);
-    var kx=dx/d*cd, ky=dy/d*cd;
-    knob.style.transform="translate("+kx+"px,"+ky+"px)";
-    moveVec={x:dx/d, y:dy/d};
-  }
-  function joyEnd(e){
-    if(e.pointerId!==joyId)return;
-    joyActive=false; joyId=null; moveVec={x:0,y:0};
-    knob.style.transform="translate(0,0)";
-  }
-  joy.addEventListener("pointerdown",function(e){e.preventDefault();joyStart(e);});
-  window.addEventListener("pointermove",joyMove);
-  window.addEventListener("pointerup",joyEnd);
-  window.addEventListener("pointercancel",joyEnd);
-
-  // 普攻鈕（長按連續）
-  var atkBtn=$("sk-atk");
-  atkBtn.addEventListener("pointerdown",function(e){e.preventDefault();atkHeld=true;doAttack();});
-  window.addEventListener("pointerup",function(){atkHeld=false;});
-  // 三技能鈕
-  ["sk-1","sk-2","sk-3"].forEach(function(id,idx){
-    $(id).addEventListener("pointerdown",function(e){e.preventDefault();castSkill(idx);});
-  });
-
-  // 桌機鍵盤
-  window.addEventListener("keydown",function(e){
-    var k=e.key.toLowerCase(); keys[k]=true;
-    if(currentPage==="battle"){
-      if(k==="j"||k===" ")doAttack();
-      if(k==="q")castSkill(0);
-      if(k==="e")castSkill(1);
-      if(k==="r")castSkill(2);
-    }
-  });
-  window.addEventListener("keyup",function(e){keys[e.key.toLowerCase()]=false;});
-  // 滑鼠左鍵普攻（桌機備援，點 canvas）
-  cv.addEventListener("pointerdown",function(e){ if(e.pointerType==="mouse"){doAttack();} });
-}
-function updateSkillButtons(){
-  // 更新技能鈕冷卻遮罩與靈氣可用狀態
-  [["sk-1",0],["sk-2",1],["sk-3",2]].forEach(function(p){
-    var btn=$(p[0]), idx=p[1], def=WORLD.skills[idx];
-    var cd=skillCd[idx], maxcd=def.cooldownMs;
-    var mask=btn.querySelector(".cd-mask"), txt=btn.querySelector(".cd-txt");
-    if(cd>0){
-      var pct=cd/maxcd*360;
-      mask.style.background="conic-gradient(rgba(0,0,0,.6) "+pct+"deg, transparent 0deg)";
-      txt.textContent=(cd/1000).toFixed(1);
-    } else { mask.style.background="none"; txt.textContent=""; }
-    btn.classList.toggle("dim",S.qi<def.qiCost||cd>0);
-  });
-}
-
-/* =========================================================================
-   12. 奇遇系統
-   ========================================================================= */
-function setupEvent(){
-  $("btn-event").addEventListener("click",triggerEvent);
-}
-function triggerEvent(){
-  var ev=WORLD.events[Math.floor(Math.random()*WORLD.events.length)];
-  var effHtml="", color="#fff";
-  var realmScale=Math.pow(1.8,S.realm);
-  if(ev.type==="good"){
-    color="#7fffd4";
-    var roll=Math.random();
-    if(roll<0.5){ var g=Math.round(rnd(50,150)*realmScale); S.qi+=g; effHtml="靈氣 +"+fmt(g); }
-    else if(roll<0.8){ var st=Math.round(rnd(40,120)*realmScale); S.stone+=st; effHtml="靈石 +"+fmt(st); }
-    else { var hi=clamp(S.realm,0,5); S.herbs[hi]+=2; effHtml="獲得靈草 ×2"; }
-  } else if(ev.type==="bad"){
-    color="#ff8a8a";
-    var roll2=Math.random();
-    if(roll2<0.5){ var loss=Math.round(rnd(30,80)*realmScale); S.qi=Math.max(0,S.qi-loss); effHtml="靈氣 -"+fmt(loss); }
-    else { var sl=Math.min(S.stone,Math.round(rnd(20,60)*realmScale)); S.stone-=sl; effHtml="靈石 -"+fmt(sl); }
-  } else {
-    // neutral：賭一把
-    color="#ffd86b";
-    if(Math.random()<0.5){ var gg=Math.round(rnd(60,200)*realmScale); S.stone+=gg; effHtml="賭贏了！靈石 +"+fmt(gg); }
-    else { var ll=Math.min(S.stone,Math.round(rnd(20,80)*realmScale)); S.stone-=ll; effHtml="賭輸了…靈石 -"+fmt(ll); }
-  }
-  $("event-result").innerHTML=
-    "<div class='card'><h3>"+(ev.type==="good"?"🍀 ":ev.type==="bad"?"☠️ ":"🎲 ")+ev.title+"</h3>"+
-    "<p>"+ev.text+"</p>"+
-    "<p style='margin-top:10px;font-weight:800;color:"+color+"'>結果："+effHtml+"</p></div>";
-  save(); refreshAll();
-}
-
-/* =========================================================================
-   13. 煉丹系統
-   ========================================================================= */
-function recipeUnlocked(tier){
-  // tier 1~6 對應境界解鎖規則
-  var r=S.realm;
-  if(tier===1)return r>=0;
-  if(tier===2)return r>=2;
-  if(tier===3)return r>=3;
-  if(tier===4)return r>=4;
-  if(tier===5)return r>=6;
-  if(tier===6)return r>=8;
-  return false;
-}
-function unlockRecipes(){ renderRecipes(); }
-function refineTime(tier){ return Math.round(30*Math.pow(2.2,tier-1)); } // 秒
-function setupAlchemy(){ renderRecipes(); }
-function renderRecipes(){
-  // 靈草顯示
-  var hl=WORLD.herbs.map(function(h,i){return h+"×"+(S.herbs[i]||0);}).join("、");
-  $("herb-list").textContent=hl;
-  var box=$("recipe-list"); box.innerHTML="";
-  WORLD.pills.forEach(function(pill,i){
-    var tier=pill.grade;
-    var unlocked=recipeUnlocked(tier);
-    var herbHave=S.herbs[tier-1]||0;
-    var c=el("div","card");
-    c.innerHTML=
-      "<h3>"+pill.em+" "+pill.name+" <span class='tag'>"+tier+"階丹方</span></h3>"+
-      "<p>"+pill.desc+"</p>"+
-      "<p style='font-size:12px;margin-top:6px'>耗時 "+refineTime(tier)+" 秒 · 需 "+WORLD.herbs[tier-1]+" ×3（現有 "+herbHave+"）</p>";
-    var btn=el("button","btn small"+(unlocked?"":" "),unlocked?"開爐煉製":"境界未達·未解鎖");
-    btn.disabled=!unlocked||S.furnace!=null||herbHave<3;
-    if(unlocked&&S.furnace==null&&herbHave<3)btn.textContent="靈草不足";
-    btn.onclick=function(){ startRefine(i,tier); };
-    c.appendChild(btn);
-    box.appendChild(c);
-  });
-  renderFurnace();
-}
-function startRefine(pillIdx,tier){
-  if(S.furnace!=null){ toast("丹爐使用中"); return; }
-  if((S.herbs[tier-1]||0)<3){ toast("靈草不足"); return; }
-  S.herbs[tier-1]-=3;
-  S.furnace={ pillIdx:pillIdx, tier:tier, endTime:Date.now()+refineTime(tier)*1000, total:refineTime(tier)*1000 };
-  save(); renderRecipes();
-}
-function renderFurnace(){
-  var prog=$("furnace-prog"), txt=$("furnace-txt"), act=$("furnace-actions");
-  if(!S.furnace){ prog.style.display="none"; txt.style.display="none"; act.innerHTML=""; return; }
-  prog.style.display="block"; txt.style.display="block";
-  var left=Math.max(0,S.furnace.endTime-Date.now());
-  var pct=clamp(100-left/S.furnace.total*100,0,100);
-  prog.querySelector("i").style.width=pct+"%";
-  var pill=WORLD.pills[S.furnace.pillIdx];
-  if(left<=0){
-    txt.innerHTML="<b style='color:#ffd86b'>"+pill.name+" 煉製完成！</b>";
-    act.innerHTML="";
-    var b=el("button","btn green small","🎉 開爐取丹");
-    b.onclick=collectPill; act.appendChild(b);
-  } else {
-    txt.innerHTML="正在煉製 <b>"+pill.name+"</b>… 剩 "+Math.ceil(left/1000)+" 秒";
-    act.innerHTML="";
-    var cost=Math.ceil(left/1000*0.5); // 加速費
-    var sb=el("button","btn gold small","⚡ 靈石加速 ("+fmt(cost)+")");
-    sb.disabled=S.stone<cost;
-    sb.onclick=function(){
-      if(S.stone<cost){toast("靈石不足");return;}
-      S.stone-=cost; S.furnace.endTime=Date.now(); save(); renderRecipes(); refreshStatus();
-    };
-    act.appendChild(sb);
-  }
-}
-function collectPill(){
-  if(!S.furnace)return;
-  var tier=S.furnace.tier, pill=WORLD.pills[S.furnace.pillIdx];
-  // 擲骰決定稀有度
-  var roll=Math.random(), acc=0, rarity=WORLD.rarityTiers[0];
-  for(var i=0;i<WORLD.rarityTiers.length;i++){ acc+=WORLD.rarityTiers[i].chance; if(roll<acc){rarity=WORLD.rarityTiers[i];break;} }
-  var rtIdx=rarity.tier; // 1~5
-  var key=pill.name+"|"+rtIdx;
-  S.pills[key]=(S.pills[key]||0)+1;
-  S.furnace=null; save();
-  var rname=WORLD.rarityNames[rtIdx-1];
-  var gainQi=WORLD.pillBaseValue[tier-1]*rarity.effectMult;
-  modal(
-    "<h2>"+(rtIdx>=4?"🌟 ":"")+"煉成 "+rname+"！</h2>"+
-    "<div class='big-em r"+rtIdx+"' style='display:inline-block;width:90px;height:90px;border-radius:20px;line-height:90px'>"+pill.em+"</div>"+
-    "<p><b class='tag r"+rtIdx+"' style='padding:2px 10px'>"+rname+"</b> "+pill.name+"<br>"+
-    "服用可得 <b style='color:#7fffd4'>"+fmt(gainQi)+"</b> 靈氣修為</p>"+
-    "<button class='btn green' onclick='__xx.closeModal()'>收入背包</button>"
-  );
-  if(rtIdx>=4)flash();
-  renderRecipes(); refreshStatus(); renderBag();
-}
-function eatPill(key){
-  if(!S.pills[key]||S.pills[key]<=0)return;
-  var parts=key.split("|"); var name=parts[0], rt=parseInt(parts[1]);
-  var pill=WORLD.pills.find(function(p){return p.name===name;});
-  if(!pill)return;
-  S.pills[key]--; if(S.pills[key]<=0)delete S.pills[key];
-  var mult=WORLD.rarityTiers[rt-1].effectMult;
-  var gain=Math.round(WORLD.pillBaseValue[pill.grade-1]*mult);
-  S.qi+=gain;
-  toast("服下"+WORLD.rarityNames[rt-1]+pill.name+"，靈氣 +"+fmt(gain));
-  save(); renderBag(); refreshAll();
-}
-function sellPill(key){
-  if(!S.pills[key]||S.pills[key]<=0)return;
-  var parts=key.split("|"); var name=parts[0], rt=parseInt(parts[1]);
-  var pill=WORLD.pills.find(function(p){return p.name===name;});
-  if(!pill)return; // 防呆：存檔殘留未知丹名時不要崩潰
-  var mult=WORLD.rarityTiers[rt-1].effectMult;
-  var price=Math.round(WORLD.pillBaseValue[pill.grade-1]*mult*0.15);
-  S.pills[key]--; if(S.pills[key]<=0)delete S.pills[key];
-  S.stone+=price;
-  toast("賣出"+pill.name+"，靈石 +"+fmt(price));
-  save(); renderBag(); refreshStatus();
-}
-
-/* =========================================================================
-   14. 拍賣系統
-   ========================================================================= */
-var auction={ current:null, log:[], npcs:[], highBid:0, highBidder:"", running:false };
-function setupAuction(){
-  $("btn-auction-enter").addEventListener("click",enterAuction);
-}
-function genAuctionItems(){
-  // 每日生成 5 件，依權重抽稀有度
-  var pool=[
-    {tier:0,name:"普通",val:800,w:0.45},
-    {tier:1,name:"稀有",val:5000,w:0.35},
-    {tier:2,name:"史詩",val:35000,w:0.15},
-    {tier:3,name:"傳說",val:250000,w:0.05}
-  ];
-  var items=[];
-  for(var i=0;i<5;i++){
-    var r=Math.random(),acc=0,pick=pool[0];
-    for(var j=0;j<pool.length;j++){acc+=pool[j].w;if(r<acc){pick=pool[j];break;}}
-    var tr=WORLD.treasures[Math.floor(Math.random()*WORLD.treasures.length)];
-    items.push({ treasure:tr.name, rarityName:pick.name, rarityTier:pick.tier, trueValue:pick.val });
-  }
-  S.auctionItems=items; S.auctionIndex=0; S.auctionDay=todayStr();
-}
-function enterAuction(){
-  if(S.auctionDay!==todayStr()){ genAuctionItems(); S.auctionEntered=false; }
-  if(!S.auctionEntered){
-    if(S.stone<50){ toast("靈石不足，無法入場"); return; }
-    S.stone-=50; S.auctionEntered=true; save(); refreshStatus();
-    toast("付 50 靈石入場");
-  }
-  $("auction-enter-wrap").style.display="none";
-  $("auction-status").innerHTML="<i>"+WORLD.auctioneerIntro+"</i>";
-  $("auction-stage").style.display="block";
-  nextAuctionItem();
-}
-function nextAuctionItem(){
-  if(S.auctionIndex>=S.auctionItems.length){
-    $("auction-stage").innerHTML="<div class='card' style='text-align:center'><h3>🔨 散場了</h3><p>今夜五件珍寶皆已落槌，諸位道友明日請早。</p></div>";
-    save(); return;
-  }
-  var item=S.auctionItems[S.auctionIndex];
-  var tr=WORLD.treasures.find(function(t){return t.name===item.treasure;});
-  // 生成 NPC（3-5 名，各有隱藏上限）
-  var npcCount=3+Math.floor(Math.random()*3);
-  auction.npcs=[];
-  var npcNames=["蒙面散修","青衫公子","黑袍老者","紅衣女修","獨臂劍客","富商王員外","神秘道人"];
-  var used={};
-  for(var i=0;i<npcCount;i++){
-    var nm; do{nm=npcNames[Math.floor(Math.random()*npcNames.length)];}while(used[nm]&&Object.keys(used).length<npcNames.length); used[nm]=1;
-    auction.npcs.push({ name:nm, cap:Math.round(item.trueValue*rnd(0.7,1.05)), out:false });
-  }
-  auction.current=item; auction.highBid=Math.round(item.trueValue*0.3); auction.highBidder="起標"; auction.log=[]; auction.running=true;
-  logBid("sys",WORLD.auctioneerIntro.slice(0,0)+"【第 "+(S.auctionIndex+1)+" 件】"+item.rarityName+"級「"+item.treasure+"」起標 "+fmt(auction.highBid)+" 靈石！");
-  renderAuctionItem(tr,item);
-  // 先讓 NPC 喊一輪墊高
-  setTimeout(npcRound,600);
-}
-function renderAuctionItem(tr,item){
-  var rcls="r"+(item.rarityTier+1>5?5:item.rarityTier+1);
-  $("auction-stage").innerHTML=
-    "<div class='card'>"+
-    "<div style='text-align:center'><div class='"+rcls+"' style='display:inline-block;width:90px;height:90px;border-radius:20px;font-size:50px;line-height:90px'>"+tr.em+"</div></div>"+
-    "<h3 style='text-align:center;margin-top:8px'>"+tr.em+" "+item.treasure+" <span class='tag "+rcls+"'>"+item.rarityName+"</span></h3>"+
-    "<p style='text-align:center'>"+tr.desc+"</p>"+
-    "<p style='text-align:center;font-size:12px;margin-top:4px;color:#7fffd4'>類型："+tr.type+"（得標永久加成）</p>"+
-    "<div style='text-align:center;margin:8px 0;font-size:15px'>當前最高：<b style='color:#ffd86b' id='au-high'>"+fmt(auction.highBid)+"</b> 靈石（"+auction.highBidder+"）</div>"+
-    "<div class='bidlog' id='au-log'></div>"+
-    "<div class='flex-wrap' style='justify-content:center'>"+
-      "<button class='btn small' id='au-bid1'>加價 +"+fmt(minInc())+"</button>"+
-      "<button class='btn gold small' id='au-bid2'>一口價 +50%</button>"+
-      "<button class='btn red small' id='au-pass'>放棄此件</button>"+
-    "</div></div>";
-  renderBidLog();
-  $("au-bid1").onclick=function(){ playerBid(auction.highBid+minInc()); };
-  $("au-bid2").onclick=function(){ playerBid(Math.round(auction.highBid*1.5)); };
-  $("au-pass").onclick=function(){ auction.running=false; toast("放棄競標"); S.auctionIndex++; setTimeout(nextAuctionItem,500); };
-}
-function minInc(){ return Math.max(Math.round(auction.highBid*0.05),10); }
-function logBid(type,msg){ auction.log.push({type:type,msg:msg}); renderBidLog(); }
-function renderBidLog(){
-  var box=$("au-log"); if(!box)return;
-  box.innerHTML=auction.log.map(function(l){return "<div class='"+l.type+"'>"+l.msg+"</div>";}).join("");
-  box.scrollTop=box.scrollHeight;
-  var h=$("au-high"); if(h)h.textContent=fmt(auction.highBid);
-}
-function playerBid(amount){
-  if(!auction.running)return;
-  if(amount<=auction.highBid){ toast("出價需高於當前"); return; }
-  if(S.stone<amount){ toast("靈石不足"); return; }
-  auction.highBid=amount; auction.highBidder="你";
-  logBid("me","💰 你出價 "+fmt(amount)+" 靈石！");
-  refreshStatus();
-  setTimeout(npcRound,500);
-}
-function npcRound(){
-  if(!auction.running)return;
-  var anyActive=false;
-  // 每個還在場的 NPC 依序決定是否加價
-  var actedNpc=null;
-  for(var i=0;i<auction.npcs.length;i++){
-    var n=auction.npcs[i];
-    if(n.out)continue;
-    // 8% 心態退出
-    if(Math.random()<0.08){ n.out=true; logBid("npc",n.name+" 搖頭退出了競標。"); continue; }
-    if(auction.highBid>=n.cap){ n.out=true; logBid("npc",n.name+"「太貴了…」放棄。"); continue; }
-    anyActive=true;
-    if(auction.highBidder!=="你" && actedNpc){ continue; } // 一輪只讓一個 NPC 加價，避免瞬間跳完
-    if(!actedNpc){
-      // 此 NPC 加價 5%~12%，不超過 cap
-      var inc=auction.highBid*rnd(0.05,0.12);
-      var newBid=Math.min(Math.round(auction.highBid+inc),n.cap);
-      if(newBid>auction.highBid){
-        auction.highBid=newBid; auction.highBidder=n.name;
-        logBid("npc","🗣️ "+n.name+" 出價 "+fmt(newBid)+" 靈石！");
-        actedNpc=n;
-      }
-    }
-  }
-  // 偶爾插入拍賣官口白
-  if(Math.random()<0.4){ logBid("sys","🔨 "+WORLD.catchphrases[Math.floor(Math.random()*5)]); }
-  // 檢查是否所有 NPC 退出 → 玩家最高則得標
-  var allOut=auction.npcs.every(function(n){return n.out;});
-  if(allOut){
-    if(auction.highBidder==="你"){ winAuction(); }
-    else if(auction.highBidder==="起標"){ // 流標
-      logBid("sys","無人應價，流標！此寶當日消失。");
-      auction.running=false; S.auctionIndex++; setTimeout(nextAuctionItem,1200);
-    } else { // NPC 得標
-      logBid("sys","🔨 成交！「"+auction.current.treasure+"」由 "+auction.highBidder+" 帶走。下一件！");
-      auction.running=false; S.auctionIndex++; setTimeout(nextAuctionItem,1400);
-    }
-  } else if(auction.highBidder!=="你"){
-    // 還有 NPC，且目前 NPC 最高 → 等玩家行動（什麼都不做，等按鈕）
-  }
-}
-function winAuction(){
-  auction.running=false;
-  if(S.stone<auction.highBid){ toast("靈石不足，無法付款，流標"); S.auctionIndex++; setTimeout(nextAuctionItem,800); return; }
-  S.stone-=auction.highBid;
-  var item=auction.current;
-  S.treasures[item.treasure]=(S.treasures[item.treasure]||0)+1;
-  var tr=WORLD.treasures.find(function(t){return t.name===item.treasure;});
-  flash();
-  modal(
-    "<h2>🔨 落槌成交！</h2>"+
-    "<div class='big-em'>"+tr.em+"</div>"+
-    "<p>恭喜道友，以 <b style='color:#ffd86b'>"+fmt(auction.highBid)+"</b> 靈石拍得<br><b>"+item.treasure+"</b>！<br>"+
-    "<span style='font-size:12px;color:#7fffd4'>"+tr.desc+"</span></p>"+
-    "<button class='btn gold' onclick='__xx.closeModal()'>收入囊中</button>"
-  );
-  S.auctionIndex++; save(); refreshStatus(); renderBag();
-  setTimeout(nextAuctionItem,400);
-}
-
-/* =========================================================================
-   15. 背包渲染
-   ========================================================================= */
-function renderBag(){
-  // 丹藥
-  var pb=$("bag-pills"); pb.innerHTML="";
-  var keys=Object.keys(S.pills).filter(function(k){return S.pills[k]>0;});
-  if(keys.length===0)pb.innerHTML="<p style='opacity:.6;font-size:12px'>尚無丹藥，去煉丹房煉幾爐吧。</p>";
-  keys.forEach(function(key){
-    var parts=key.split("|"); var name=parts[0], rt=parseInt(parts[1]);
-    var pill=WORLD.pills.find(function(p){return p.name===name;});
-    var slot=el("div","slot r"+rt);
-    slot.innerHTML="<span class='em'>"+pill.em+"</span><span class='nm'>"+WORLD.rarityNames[rt-1]+name+"</span><span class='qty'>"+S.pills[key]+"</span>";
-    slot.onclick=function(){
-      modal("<h2>"+pill.em+" "+WORLD.rarityNames[rt-1]+pill.name+"</h2><p>"+pill.desc+"</p>"+
-        "<div class='flex-wrap' style='justify-content:center'>"+
-        "<button class='btn green small' id='m-eat'>服用</button>"+
-        "<button class='btn gold small' id='m-sell'>賣出</button>"+
-        "<button class='btn small' onclick='__xx.closeModal()'>關閉</button></div>");
-      $("m-eat").onclick=function(){eatPill(key);closeModal();};
-      $("m-sell").onclick=function(){sellPill(key);closeModal();};
-    };
-    pb.appendChild(slot);
-  });
-  // 珍寶
-  var tb=$("bag-treasures"); tb.innerHTML="";
-  var tk=Object.keys(S.treasures).filter(function(k){return S.treasures[k]>0;});
-  if(tk.length===0)tb.innerHTML="<p style='opacity:.6;font-size:12px'>尚無珍寶，去拍賣行搶寶吧。</p>";
-  tk.forEach(function(nm){
-    var tr=WORLD.treasures.find(function(t){return t.name===nm;});
-    var slot=el("div","slot r4");
-    slot.innerHTML="<span class='em'>"+tr.em+"</span><span class='nm'>"+nm+"</span><span class='qty'>"+S.treasures[nm]+"</span>";
-    slot.onclick=function(){
-      var bon=[];
-      if(tr.atk)bon.push("攻擊+"+Math.round(tr.atk*100)+"%");
-      if(tr.def)bon.push("防禦+"+Math.round(tr.def*100)+"%");
-      if(tr.hp)bon.push("血量+"+Math.round(tr.hp*100)+"%");
-      if(tr.idle)bon.push("打坐+"+Math.round(tr.idle*100)+"%");
-      modal("<h2>"+tr.em+" "+nm+"</h2><p>"+tr.desc+"</p><p style='color:#ffd86b'>永久加成（每件疊加）："+bon.join("、")+"<br>持有 ×"+S.treasures[nm]+"</p><button class='btn gold small' onclick='__xx.closeModal()'>關閉</button>");
-    };
-    tb.appendChild(slot);
-  });
-  // 靈草
-  var hb=$("bag-herbs"); hb.innerHTML="";
-  WORLD.herbs.forEach(function(h,i){
-    if((S.herbs[i]||0)<=0)return;
-    var slot=el("div","slot r"+clamp(i+1,1,5));
-    slot.innerHTML="<span class='em'>🌿</span><span class='nm'>"+h+"</span><span class='qty'>"+S.herbs[i]+"</span>";
-    hb.appendChild(slot);
-  });
-  if(hb.innerHTML==="")hb.innerHTML="<p style='opacity:.6;font-size:12px'>尚無靈草，去戰鬥或奇遇蒐集。</p>";
-}
-
-/* =========================================================================
-   16. 分頁切換
-   ========================================================================= */
-var currentPage="meditate";
-function switchPage(name){
-  currentPage=name;
-  document.querySelectorAll(".xx-page").forEach(function(p){p.classList.remove("active");});
-  $("xx-page-"+name).classList.add("active");
-  document.querySelectorAll(".xx-tab").forEach(function(t){t.classList.toggle("active",t.dataset.page===name);});
-  // 戰鬥才顯示搖桿
-  $("xx-controls").classList.toggle("show",name==="battle");
-  if(name==="battle"){
-    if(enemies.length===0)initBattle();
-    player.hp=Math.min(player.hp,playerMaxHp());if(player.hp<=0)player.hp=playerMaxHp();
-    // 切到戰鬥頁這一刻畫布容器才真正有寬高，必須重算縮放，
-    // 否則手機上 canvas 會用預設 720×900 撐爆版面（responsive 修正）
-    resizeCanvas();
-  }
-  if(name==="alchemy")renderRecipes();
-  if(name==="bag")renderBag();
-  if(name==="auction"){
-    // 切換時若已過日，重置入場
-    if(S.auctionDay!==todayStr()){ S.auctionEntered=false; }
-    if(S.auctionEntered && S.auctionItems){ $("auction-enter-wrap").style.display="none"; $("auction-stage").style.display="block"; nextAuctionItemSafe(); }
-    else { $("auction-enter-wrap").style.display="block"; $("auction-stage").style.display="none"; }
-  }
-  refreshAll();
-}
-function nextAuctionItemSafe(){
-  // 重入拍賣頁時的安全恢復
-  if(!auction.running){
-    if(S.auctionIndex>=(S.auctionItems?S.auctionItems.length:5)){
-      $("auction-stage").innerHTML="<div class='card' style='text-align:center'><h3>🔨 今日已散場</h3><p>明日再來。</p></div>";
-    } else { nextAuctionItem(); }
-  }
-}
-function setupTabs(){
-  document.querySelectorAll(".xx-tab").forEach(function(t){
-    t.addEventListener("click",function(){ switchPage(t.dataset.page); });
-  });
-}
-
-/* =========================================================================
-   17. 主迴圈（requestAnimationFrame）+ 分頁暫停
-   ========================================================================= */
-var rafId=null, lastT=0, accSave=0, accUI=0;
-function loop(t){
-  rafId=requestAnimationFrame(loop);
-  if(!lastT)lastT=t;
-  var dt=Math.min((t-lastT)/1000,0.05); // 限制最大步進避免卡頓爆衝
-  lastT=t;
-  // 放置打坐永遠跑（背景也算）
-  meditateTick(dt);
-  // 戰鬥僅在戰鬥頁更新與繪製
-  if(currentPage==="battle"){
-    battleUpdate(dt);
-    drawBattle();
-    updateSkillButtons();
-  }
-  // UI 節流更新（每 0.2 秒）
-  accUI+=dt;
-  if(accUI>=0.2){ accUI=0; refreshStatusLight(); }
-  // 自動存檔（每 5 秒）
-  accSave+=dt;
-  if(accSave>=5){ accSave=0; save(); }
-  // 煉丹進度（僅煉丹頁刷新條）
-  if(currentPage==="alchemy"&&S.furnace)renderFurnace();
-}
-function refreshStatusLight(){
-  // 輕量刷新：頂部數值 + 當前頁面必要項
-  refreshStatus();
-  if(currentPage==="meditate")refreshMeditateUI();
-}
-function refreshAll(){
-  refreshStatus();
-  refreshMeditateUI();
-}
-// 切到背景分頁暫停 RAF，回來恢復（避免空跑）
-document.addEventListener("visibilitychange",function(){
-  if(document.hidden){ if(rafId){cancelAnimationFrame(rafId);rafId=null;} save(); }
-  else { lastT=0; if(!rafId)rafId=requestAnimationFrame(loop); }
+$("xx-home-btn").addEventListener("click",()=>{
+ modal("收功回洞府？","當前戰鬥進度、清理度、靈石全部保留。",[
+  {t:"取消",f:closeModal},
+  {t:"確定回洞府",gold:true,f:()=>{closeModal();exitExplore(true);}}]);
 });
+function exitExplore(toHome){
+ sessionActive=false;MODE="home";root.classList.remove("in-explore");
+ swordArrays.length=0; // 退出歷練：清掉殘留劍陣，避免對下次世界生效
+ $("xx-area").textContent="洞府";saveGame();if(toHome)gotoScene("home");
+}
+function onDeath(){
+ if(!sessionActive)return;sessionActive=false;
+ $("xx-death").classList.add("on");shake(8);
+ const now=Date.now();let pct=(now-(S._lastDeath||0)<60000)?0.05:0.1;
+ S._lastDeath=now;
+ const lost=Math.min(500,Math.floor(S.stones*pct));S.stones-=lost;
+ const hasRevive=(S.inv.pill["drop5"]||0)>0||hasRevivePill();
+ modal("⚰️ 你倒下了…",
+  "境界與修為毫髮無傷（永不倒退），僅損失 "+fmt(lost)+" 隨身靈石。如何復活？",
+  [{t:hasRevive?"💊 原地復活(耗還魂丹)":"💊 無還魂丹",gold:hasRevive,disabled:!hasRevive,
+    f:()=>{closeModal();reviveInPlace();}},
+   {t:"🏮 回村復活(免費)",f:()=>{closeModal();reviveAtCheckpoint();}}]);
+ saveGame();
+}
+function hasRevivePill(){ // 找仙品/還魂丹
+ for(const k in S.inv.pill){if(S.inv.pill[k]>0){const m=S._meta[k];
+  if(m&&(m.grade===5||m.tier===5))return true;}}return false;}
+function consumeRevivePill(){
+ if(S.inv.pill["drop5"]>0){S.inv.pill["drop5"]--;return;}
+ for(const k in S.inv.pill){if(S.inv.pill[k]>0){const m=S._meta[k];
+  if(m&&(m.grade===5||m.tier===5)){S.inv.pill[k]--;return;}}}}
+function reviveInPlace(){consumeRevivePill();
+ player.hp=playerMaxHp();player.invuln=3;
+ world.entities.forEach(m=>{if(m.type==="mob"&&!m.dead&&
+  Math.hypot(m.wx-player.wx,m.wy-player.wy)<4){m.knock=1;m.state="RETURN";}});
+ $("xx-death").classList.remove("on");sessionActive=true;MODE="explore";
+ banner("浴火重生！","#7df0da");}
+function reviveAtCheckpoint(){player.wx=world.entry.wx;player.wy=world.entry.wy;
+ player.hp=playerMaxHp();player.invuln=2;
+ $("xx-death").classList.remove("on");sessionActive=true;MODE="explore";}
 
-/* =========================================================================
-   18. 離線收益（閉關）
-   ========================================================================= */
-function applyOffline(){
-  var now=Date.now();
-  var sec=(now-(S.lastSave||now))/1000;
-  if(sec>60){ // 超過 1 分鐘才結算
-    var cap=Math.min(sec,28800); // 上限 8 小時
-    var gain=Math.round(idlePerSec()*cap*0.6); // 60% 效率
-    if(gain>0){
-      S.qi+=gain;
-      var hh=Math.floor(cap/3600), mm=Math.floor(cap%3600/60);
-      setTimeout(function(){
-        modal("<h2>🧘 閉關歸來</h2><div class='big-em'>🌙</div>"+
-          "<p>你閉關了 "+(hh>0?hh+" 小時 ":"")+mm+" 分鐘，<br>吐納積攢靈氣 <b style='color:#7fffd4'>+"+fmt(gain)+"</b>！</p>"+
-          "<button class='btn gold' onclick='__xx.closeModal()'>繼續修行</button>");
-      },400);
-    }
-  }
+/* visibilitychange：背景=暫停（不結算戰鬥、不掉數值）；回來補打坐離線收益 */
+let bgPauseTime=0,paused=false;
+document.addEventListener("visibilitychange",()=>{
+ if(document.hidden){paused=true;bgPauseTime=Date.now();saveGame();}
+ else{paused=false;lastFrame=performance.now();
+  if(bgPauseTime){applyOffline((Date.now()-bgPauseTime)/1000);bgPauseTime=0;}}
+});
+function applyOffline(sec){
+ sec=Math.min(sec,28800);if(sec<3)return;
+ const gain=Math.round(curRealm().idle*sec*0.6);
+ if(gain>0){addQi(gain);
+  modal("閉關歸來","你閉關了約 "+(sec/3600).toFixed(1)+" 小時，溫養丹田獲得 "+fmt(gain)+
+   " 靈氣（離線 60% 效率）。",[{t:"繼續修行",gold:true,f:closeModal}]);}
 }
 
-/* =========================================================================
-   19. Canvas 響應式縮放
-   ========================================================================= */
-function resizeCanvas(){
-  var wrap=$("xx-canvas-wrap");
-  var w=wrap.clientWidth, h=wrap.clientHeight;
-  if(w<=0||h<=0)return;
-  var scale=Math.min(w/CW,h/CH);
-  var dpr=window.devicePixelRatio||1;
-  // 設定實際像素（含 dpr 防糊）
-  cv.width=CW*dpr; cv.height=CH*dpr;
-  cv.style.width=(CW*scale)+"px"; cv.style.height=(CH*scale)+"px";
-  ctx.setTransform(dpr,0,0,dpr,0,0);
+/* =====================================================================
+   12. 靈氣 / 突破（靈氣滿封頂停住，等玩家手動按）
+   ===================================================================== */
+function addQi(n){S.qi+=n;S.lifetimeQi+=n;const cap=breakCost();
+ if(S.realm<9&&S.qi>cap)S.qi=cap;}
+function canBreak(){return S.realm<9&&S.qi>=breakCost();}
+let breakAnim=0;
+function doBreakthrough(){
+ if(!canBreak())return;
+ const rate=Math.min(1,curRealm().rate+S.breakBonus);
+ S.qi-=breakCost();breakAnim=1.2;
+ if(Math.random()<rate){S.realm++;S.breakBonus=Math.max(0,S.breakBonus-0.1);
+  banner("突破成功！"+REALM_NAMES[S.realm],"#f5d27a");shake(10);FX.goldBeam=0.5;
+  modal("⚡ 突破成功！晉升 "+REALM_NAMES[S.realm],REALM_DESC[S.realm],
+   [{t:"再接再厲",gold:true,f:closeModal}]);
+  questProgress("break",1);unlockMilestone("realm"+S.realm,"🌟 晉升 "+REALM_NAMES[S.realm]);
+ }else{S.qi=Math.floor(S.qi*0.6);banner("突破失敗…","#ff6b6b");shake(6);
+  modal("突破失敗","靈氣炸散，損失四成已存靈氣。境界不動，調息再來——穩住心神。",
+   [{t:"穩住，再來",f:closeModal}]);}
+ player.maxHp=playerMaxHp();if(!sessionActive)player.hp=player.maxHp;
+ saveGame();updateHUD();renderMeditate();
 }
-window.addEventListener("resize",function(){ setTimeout(resizeCanvas,50); });
+$("xx-breakthrough").addEventListener("click",doBreakthrough);
 
-/* =========================================================================
-   20. 啟動
-   ========================================================================= */
+/* =====================================================================
+   13. HUD
+   ===================================================================== */
+function updateHUD(){
+ $("xx-realm").textContent=REALM_NAMES[S.realm];
+ const cap=breakCost(),qr=clamp(S.qi/cap,0,1);
+ $("xx-qibar").querySelector("i").style.width=(qr*100)+"%";
+ $("xx-qilab").textContent=fmt(S.qi)+" / "+fmt(cap)+(S.realm>=9?" (頂)":"");
+ const mhp=playerMaxHp(),hp=sessionActive?player.hp:mhp;
+ $("xx-hpbar").querySelector("i").style.width=(clamp(hp/mhp,0,1)*100)+"%";
+ $("xx-hplab").textContent=fmt(hp)+"/"+fmt(mhp);
+ $("xx-stones").textContent="💎 "+fmt(S.stones);
+ $("xx-qibar").style.boxShadow=(qr>=1&&S.realm<9)?"0 0 12px #7df0da":"none";
+}
+
+/* =====================================================================
+   14. 打坐場景 UI
+   ===================================================================== */
+function renderMeditate(){
+ const cap=breakCost();
+ $("xx-med-info").innerHTML="當前 "+REALM_NAMES[S.realm]+
+  "　靈氣 "+fmt(S.qi)+" / "+fmt(cap)+"　(+"+fmt(curRealm().idle)+"/秒)";
+ const b=$("xx-breakthrough");
+ if(canBreak()){b.disabled=false;b.textContent="⚡ 靈氣已滿 — 點此突破！";b.classList.add("gold");}
+ else if(S.realm>=9){b.disabled=true;b.textContent="已達散仙之巔";}
+ else{b.disabled=true;b.textContent="靈氣未滿，繼續打坐…("+Math.floor(S.qi/cap*100)+"%)";}
+}
+
+/* =====================================================================
+   15. 煉丹場景
+   ===================================================================== */
+function pillUnlocked(p){return S.realm>=p.unlock;}
+let alcOpenFx=null;
+function renderAlchemy(){
+ const p=PILLS[S.alcPillIdx],herbKey="herb"+p.grade,have=S.inv.herb[herbKey]||0;
+ let html;
+ if(S.alc){const remain=Math.max(0,Math.ceil(S.alc.endT-Date.now()/1000));
+  const total=refineSec(S.alc.grade),pct=clamp(1-remain/total,0,1);
+  html="🔥 正在煉製 <b>"+PILLS[S.alc.idx].name+"</b><br><div style='margin:8px 0;'>"+drawRing(pct,remain)+"</div>";
+  $("xx-alc-start").textContent="🔥 煉製中…";$("xx-alc-start").disabled=true;
+  $("xx-alc-speed").disabled=false;$("xx-alc-speed").textContent="💎 加速 ("+fmt(speedCost(remain))+")";
+ }else{const locked=!pillUnlocked(p);
+  html="丹方：<b style='color:"+(locked?"#888":"var(--c-gold)")+"'>"+p.name+"</b> ("+p.grade+"階)<br>"+
+   "<span style='font-size:11px;color:var(--c-sub)'>"+
+   (locked?("需境界 "+REALM_NAMES[p.unlock]+" 解鎖"):
+     ("需 "+p.grade+"階靈草 ×3（持有 "+have+"）｜耗時 "+refineSec(p.grade)+"秒"))+"</span>";
+  $("xx-alc-start").textContent="🔥 開爐煉丹";$("xx-alc-start").disabled=locked||have<3;
+  $("xx-alc-speed").disabled=true;$("xx-alc-speed").textContent="💎 靈石加速";}
+ $("xx-alc-status").innerHTML=html;
+}
+function drawRing(pct,remain){const deg=pct*360;
+ return "<div style='width:64px;height:64px;border-radius:50%;margin:0 auto;"+
+  "background:conic-gradient(#f5d27a "+deg+"deg,#332840 0);display:flex;align-items:center;justify-content:center;'>"+
+  "<div style='width:48px;height:48px;border-radius:50%;background:#171221;display:flex;"+
+  "align-items:center;justify-content:center;font-size:13px;color:var(--c-gold)'>"+remain+"s</div></div>";}
+$("xx-alc-prev").addEventListener("click",()=>{S.alcPillIdx=(S.alcPillIdx+PILLS.length-1)%PILLS.length;renderAlchemy();});
+$("xx-alc-next").addEventListener("click",()=>{S.alcPillIdx=(S.alcPillIdx+1)%PILLS.length;renderAlchemy();});
+$("xx-alc-start").addEventListener("click",()=>{
+ const p=PILLS[S.alcPillIdx],hk="herb"+p.grade;
+ if((S.inv.herb[hk]||0)<3){floatText("材料不足",W/2,H*0.5,"#ff6b6b");return;}
+ S.inv.herb[hk]-=3;S.alc={idx:S.alcPillIdx,grade:p.grade,endT:Date.now()/1000+refineSec(p.grade)};
+ renderAlchemy();saveGame();});
+$("xx-alc-speed").addEventListener("click",()=>{if(!S.alc)return;
+ const remain=Math.max(0,Math.ceil(S.alc.endT-Date.now()/1000)),cost=speedCost(remain);
+ if(S.stones<cost){floatText("靈石不足",W/2,H*0.5,"#ff6b6b");return;}
+ S.stones-=cost;S.alc.endT=Date.now()/1000+1;renderAlchemy();saveGame();});
+function tickAlchemy(){
+ if(S.alc&&Date.now()/1000>=S.alc.endT){
+  const idx=S.alc.idx,p=PILLS[idx];S.alc=null;
+  let r=Math.random(),acc=0,tier=1;
+  for(const t of RARITY){acc+=t.chance;if(r<acc){tier=t.t;break;}}
+  addItem("pill","g"+p.grade+"_"+tier,1,{grade:p.grade,tier,name:p.name});
+  if(SUB==="alchemy"&&MODE==="home"){alcOpenFx={t:0.9,tier,name:p.name};
+   if(tier>=4){slowmo(300);shake(8);banner(tier===5?"仙品丹！":"極品丹！",RARITY_COLOR[tier-1]);}
+   else if(tier===3)shake(3);renderAlchemy();}
+  questProgress("refine",1);if(tier===5)unlockMilestone("immortal_pill","煉出仙品丹");saveGame();}
+}
+
+/* =====================================================================
+   16. 拍賣場景
+   ===================================================================== */
+let auc=null;
+function aucDailyTreasures(){const day=todayKey();
+ if(S._aucDay!==day){S._aucDay=day;S._aucList=[];S._aucDone=[];
+  const weights=[[800,0.45],[5000,0.35],[35000,0.15],[250000,0.05]];
+  for(let i=0;i<5;i++){let r=Math.random(),acc=0,tv=800;
+   for(const w of weights){acc+=w[1];if(r<acc){tv=w[0];break;}}
+   S._aucList.push({tr:TREASURES[Math.floor(Math.random()*TREASURES.length)],trueValue:tv});}
+  S._aucEntered=false;saveGame();}}
+function enterAuction(){aucDailyTreasures();
+ if(!S._aucEntered){if(S.stones<50){$("xx-auc-speech").textContent="入場費 50 靈石都湊不齊？先去打怪吧道友。";
+   $("xx-auc-panel").style.opacity=.4;auc=null;$("xx-auc-item").innerHTML="";$("xx-auc-bidinfo").textContent="";return;}
+  S.stones-=50;S._aucEntered=true;$("xx-auc-panel").style.opacity=1;}
+ nextAuctionItem();}
+function nextAuctionItem(){
+ const idx=S._aucList.findIndex((x,i)=>!S._aucDone.includes(i));
+ if(idx<0){$("xx-auc-speech").textContent="今日五件珍寶皆已落定，明日請早，道友。";
+  $("xx-auc-item").innerHTML="🈳 今日拍賣結束";$("xx-auc-bidinfo").textContent="";auc=null;return;}
+ const item=S._aucList[idx],tv=item.trueValue;
+ const rarityIdx=tv>=250000?3:tv>=35000?2:tv>=5000?1:0;
+ const npcCount=Math.floor(rand(3,5.99)),npcs=[];
+ for(let i=0;i<npcCount;i++)npcs.push({cap:Math.round(tv*rand(0.7,1.05)),out:false});
+ auc={idx,item,tv,rarityIdx,npcs,cur:Math.round(tv*0.3),holder:"none"};
+ $("xx-auc-speech").textContent=AUCTIONEER.lines[0];renderAuction();}
+function renderAuction(){if(!auc)return;const it=auc.item.tr;
+ $("xx-auc-item").innerHTML="<div style='font-size:40px'>"+it.emoji+"</div>"+
+  "<b style='color:"+RARITY_COLOR[auc.rarityIdx+1]+"'>"+it.name+"</b> "+
+  "<span class='xx-tag' style='background:"+RARITY_COLOR[auc.rarityIdx+1]+";color:#1a1024'>"+
+  ["普通","稀有","史詩","傳說"][auc.rarityIdx]+"</span>"+
+  "<div style='font-size:10px;color:var(--c-sub);margin-top:3px'>"+it.type+"</div>";
+ const aliveNpc=auc.npcs.filter(n=>!n.out).length;
+ $("xx-auc-bidinfo").innerHTML="當前最高：<b style='color:var(--c-gold)'>"+fmt(auc.cur)+"</b> 靈石"+
+  (auc.holder==="me"?" (你)":auc.holder==="npc"?" (對手)":"")+
+  "<br>場上對手："+aliveNpc+" 名｜你的靈石："+fmt(S.stones);
+ $("xx-auc-raise").textContent="加價 +"+fmt(Math.max(Math.round(auc.cur*0.05),10));}
+$("xx-auc-raise").addEventListener("click",()=>auctionBid(false));
+$("xx-auc-buynow").addEventListener("click",()=>auctionBid(true));
+$("xx-auc-next").addEventListener("click",()=>enterAuction());
+function auctionBid(buyNow){if(!auc)return;
+ const inc=Math.max(Math.round(auc.cur*0.05),10);
+ let myBid=buyNow?Math.round(auc.tv*1.05):auc.cur+inc;
+ if(auc.holder==="none"&&!buyNow)myBid=auc.cur;
+ if(myBid>S.stones){$("xx-auc-speech").textContent="靈石不夠喔道友，量力而為。";return;}
+ auc.cur=myBid;auc.holder="me";
+ auc.npcs.forEach(n=>{if(n.out)return;
+  if(Math.random()<0.08){n.out=true;return;}
+  if(auc.cur>=n.cap){n.out=true;return;}
+  auc.cur=Math.min(auc.cur+Math.round(auc.cur*rand(0.05,0.12)),n.cap);auc.holder="npc";npcBidFx();});
+ const alive=auc.npcs.filter(n=>!n.out).length;
+ if(alive===0||auc.holder==="me")finishAuction();
+ else{$("xx-auc-speech").textContent=AUCTIONEER.lines[Math.floor(rand(1,5))];renderAuction();}}
+function finishAuction(){
+ if(auc.holder==="npc"){$("xx-auc-speech").textContent=AUCTIONEER.lines[1];renderAuction();return;}
+ const cost=auc.cur;S.stones-=cost;S._aucDone.push(auc.idx);
+ addItem("treasure","auc_"+auc.idx+"_"+auc.item.tr.name,1,{name:auc.item.tr.name,emoji:auc.item.tr.emoji});
+ $("xx-auc-speech").textContent=AUCTIONEER.lines[5];
+ const profit=auc.tv-cost;banner("成交！","#f5d27a");
+ for(let i=0;i<24;i++)spawnParticle(W/2,H*0.4,rand(-120,120),rand(-160,-30),0.9,RARITY_COLOR[auc.rarityIdx+1],3,180);
+ if(profit>0)floatText("賺了 "+fmt(profit)+" 靈石！💰",W/2,H*0.46,"#6ee787",18);
+ questProgress("auction",1);unlockMilestone("auc_first","首次拍下珍寶");
+ S.combatBonus=Math.min(0.5,S.combatBonus+0.01); // 法寶永久加成
+ saveGame();setTimeout(()=>{if(SUB==="auction")nextAuctionItem();},900);}
+function npcBidFx(){floatText("🪧💢",W/2+rand(-90,90),H*0.55,"#ffb3b3",16);}
+
+/* =====================================================================
+   17. 背包
+   ===================================================================== */
+function addItem(cat,key,n,meta){S.inv[cat][key]=(S.inv[cat][key]||0)+n;
+ if(meta){if(!S._meta)S._meta={};S._meta[key]=meta;}}
+function renderInventory(catTab){
+ const grid=$("xx-inv-grid");grid.innerHTML="";const cat=catTab||"pill";
+ document.querySelectorAll("#xx-inv-tabs button").forEach(b=>b.classList.toggle("gold",b.dataset.inv===cat));
+ const bag=S.inv[cat]||{},keys=Object.keys(bag).filter(k=>bag[k]>0);
+ if(keys.length===0){grid.innerHTML="<div style='grid-column:1/-1;color:var(--c-sub);font-size:12px;"+
+  "text-align:center;padding:20px'>空空如也，去歷練/煉丹填滿它。</div>";return;}
+ keys.forEach(k=>{const meta=(S._meta&&S._meta[k])||{};
+  let emoji="📦",rar=1,nm="";
+  if(cat==="pill"){const tier=meta.tier||1;rar=tier;emoji="💊";nm=(meta.name||"丹藥").slice(0,3)+RARITY_NAMES[tier-1].slice(0,2);}
+  else if(cat==="herb"){emoji="🌿";nm=k.replace("herb","")+"階草";rar=clamp(+k.replace("herb","")||1,1,5);}
+  else{emoji=meta.emoji||"✨";nm=(meta.name||"寶物").slice(0,4);rar=k.indexOf("drop")===0?(+k.replace("drop","")||4):4;}
+  const slot=document.createElement("div");slot.className="xx-slot r"+rar;
+  slot.innerHTML=emoji+"<span class='nm'>"+nm+"</span><span class='qn'>"+bag[k]+"</span>";
+  slot.addEventListener("click",()=>itemAction(cat,k,meta));grid.appendChild(slot);});
+}
+document.querySelectorAll("#xx-inv-tabs button").forEach(b=>b.addEventListener("click",()=>renderInventory(b.dataset.inv)));
+function itemAction(cat,key,meta){
+ if(cat==="pill"){const tier=meta.tier||1,grade=meta.grade||1,base=PILLS[grade-1].base;
+  const gainQi=Math.round(base*RARITY[tier-1].mult),sell=sellPrice(base,RARITY[tier-1].mult);
+  modal((meta.name||"丹藥")+" ("+RARITY_NAMES[tier-1]+")",
+   "吃下補 "+fmt(gainQi)+" 靈氣，或賣出換 "+fmt(sell)+" 靈石。",
+   [{t:"吃丹補修為",gold:true,f:()=>{S.inv.pill[key]--;addQi(gainQi);
+      floatText("+"+fmt(gainQi)+" 靈氣",W/2,H*0.4,"#7df0da",16);closeModal();renderInventory("pill");saveGame();}},
+    {t:"賣出換靈石",f:()=>{S.inv.pill[key]--;S.stones+=sell;
+      floatText("+"+fmt(sell)+" 靈石",W/2,H*0.4,"#6ee787",16);closeModal();renderInventory("pill");saveGame();}},
+    {t:"關閉",f:closeModal}]);
+ }else if(cat==="treasure")modal(meta.name||"寶物","法寶/靈材，持有即永久提升戰力（已生效於戰鬥熟練度）。",[{t:"知道了",f:closeModal}]);
+ else modal("靈草","煉丹材料，去丹房投入丹爐煉成丹藥。",[{t:"知道了",f:closeModal}]);
+}
+
+/* =====================================================================
+   18. 每日任務 / 登入 / 里程碑
+   ===================================================================== */
+function todayKey(){const d=new Date(Date.now()+8*3600*1000);
+ return d.getUTCFullYear()+"-"+(d.getUTCMonth()+1)+"-"+d.getUTCDate();}
+const QUEST_DEFS=[
+ {id:"kill",name:"斬妖 30 隻",goal:30,reward:{stones:300,herb:2}},
+ {id:"refine",name:"煉丹 2 爐",goal:2,reward:{stones:200}},
+ {id:"auction",name:"拍賣得標 1 件",goal:1,reward:{stones:400}},
+ {id:"break",name:"突破 1 次",goal:1,reward:{stones:500,herb:1}}];
+function refreshDaily(){const day=todayKey();
+ if(S.daily.date!==day){S.daily.date=day;S.daily.clears={};S.daily.quests={};
+  QUEST_DEFS.forEach(q=>S.daily.quests[q.id]={p:0,done:false,claimed:false});
+  const yest=new Date(Date.now()+8*3600*1000-86400000);
+  const ykey=yest.getUTCFullYear()+"-"+(yest.getUTCMonth()+1)+"-"+yest.getUTCDate();
+  S.login.streak=(S.login.date===ykey)?Math.min(7,S.login.streak+1):1;
+  S.login.date=day;S.login.claimedToday=false;saveGame();}
+ if(!S.daily.quests)S.daily.quests={};
+ QUEST_DEFS.forEach(q=>{if(!S.daily.quests[q.id])S.daily.quests[q.id]={p:0,done:false,claimed:false};});}
+function questProgress(id,n){refreshDaily();const q=S.daily.quests[id];if(!q||q.done)return;
+ q.p+=n;const def=QUEST_DEFS.find(d=>d.id===id);
+ if(q.p>=def.goal){q.done=true;floatText("📜 任務完成："+def.name,W/2,H*0.35,"#f5d27a",14);}
+ if(SUB==="quests")renderQuests();saveGame();}
+function renderQuests(){refreshDaily();
+ $("xx-quest-reset").textContent="每日 0:00（台北）刷新｜今日："+todayKey();
+ const list=$("xx-quest-list");list.innerHTML="";
+ QUEST_DEFS.forEach(def=>{const q=S.daily.quests[def.id];
+  const row=document.createElement("div");row.className="xx-row";
+  row.innerHTML="<div class='ico'>"+(q.done?"✅":"⏳")+"</div>"+
+   "<div class='info'><b>"+def.name+"</b><span>進度 "+Math.min(q.p,def.goal)+"/"+def.goal+
+   "｜獎勵 💎"+def.reward.stones+(def.reward.herb?" +靈草×"+def.reward.herb:"")+"</span></div>";
+  const btn=document.createElement("button");btn.className="xx-btn"+(q.done&&!q.claimed?" gold":"");
+  btn.style.cssText="padding:6px 10px;font-size:11px;";
+  btn.textContent=q.claimed?"已領":q.done?"領取":"進行中";btn.disabled=!q.done||q.claimed;
+  btn.onclick=()=>{q.claimed=true;S.stones+=def.reward.stones;
+   if(def.reward.herb)addItem("herb","herb"+clamp(S.realm+1,1,6),def.reward.herb);
+   floatText("+"+def.reward.stones+" 靈石",W/2,H*0.4,"#6ee787",16);renderQuests();saveGame();};
+  row.appendChild(btn);list.appendChild(row);});
+ const lr=$("xx-login-row"),rewards=[100,200,300,500,800,1200,2000],day=S.login.streak;
+ lr.innerHTML="<div class='xx-row'><div class='ico'>🎁</div><div class='info'>"+
+  "<b>連續登入第 "+day+" 天</b><span>今日獎勵 💎"+rewards[day-1]+
+  "（連續越久越多，斷了重置）</span></div></div>";
+ const cbtn=document.createElement("button");cbtn.className="xx-btn gold";
+ cbtn.style.cssText="width:100%;margin-top:6px;";
+ cbtn.textContent=S.login.claimedToday?"今日已領取":"領取登入獎勵";cbtn.disabled=S.login.claimedToday;
+ cbtn.onclick=()=>{S.login.claimedToday=true;S.stones+=rewards[day-1];
+  floatText("+"+rewards[day-1]+" 靈石",W/2,H*0.4,"#6ee787",18);
+  banner("登入獎勵到手！","#f5d27a");renderQuests();updateHUD();saveGame();};
+ lr.appendChild(cbtn);}
+function unlockMilestone(id,text){if(S.milestones[id])return;S.milestones[id]=true;
+ banner("🏆 里程碑達成","#ffd86b");floatText(text,W/2,H*0.46,"#f5d27a",14);
+ S.combatBonus=Math.min(0.5,S.combatBonus+0.005);saveGame();}
+
+/* =====================================================================
+   19. 區域解鎖 / 清理度
+   ===================================================================== */
+function areaClearPct(area){const c=S.areaClear[area.id]||{kinds:{},chests:0};
+ const kinds=Object.keys(c.kinds||{}).length;
+ const kindPart=kinds/area.mobTypes.length;
+ const chestPart=(c.chests||0)/area.spawns.chest;
+ const bossPart=S.areaBoss[area.id]?1:0;
+ return clamp(kindPart*0.4+chestPart*0.3+bossPart*0.3,0,1);}
+function areaUnlocked(area){const u=area.unlock;
+ if(S.realm<u.realm)return false;
+ if(u.prev>0){const prev=AREAS.find(a=>a.id===area.id-1);
+  if(prev&&areaClearPct(prev)<u.prev)return false;}
+ if(u.bossKilled){const ba=AREAS.find(a=>a.boss===u.bossKilled);if(ba&&!S.areaBoss[ba.id])return false;}
+ return true;}
+function areaReq(area){const u=area.unlock,s=[];
+ if(u.realm>0)s.push("境界 ≥ "+REALM_NAMES[u.realm]);
+ if(u.prev>0)s.push("前一區清理度 ≥ "+(u.prev*100)+"%");
+ if(u.bossKilled)s.push("已斬 焚天魔尊");
+ return s.join("，")||"無";}
+function updateAreaClearAndUnlock(){const pct=areaClearPct(world.area);
+ if(pct>=1&&!(S.areaClear[world.area.id]&&S.areaClear[world.area.id].rewarded)){
+  if(!S.areaClear[world.area.id])S.areaClear[world.area.id]={kinds:{},chests:0};
+  S.areaClear[world.area.id].rewarded=true;
+  const bonus=Math.round(500*Math.pow(1.8,world.area.id));S.stones+=bonus;
+  banner("區域全清！大獎！","#ffd86b");
+  floatText("+"+fmt(bonus)+" 靈石 + 稀有掉落",W/2,H*0.46,"#6ee787",16);
+  spawnDrop(player.wx,player.wy,"treasure",4);}}
+function buildAreaList(){const wrap=$("xx-area-list");wrap.innerHTML="";
+ AREAS.forEach(area=>{const unlocked=areaUnlocked(area),pct=areaClearPct(area);
+  const card=document.createElement("div");card.className="xx-area-card"+(unlocked?"":" lock");
+  card.innerHTML="<b style='color:"+area.theme+"'>"+area.id+". "+area.name+"</b>"+
+   " <span style='font-size:10px;color:var(--c-sub)'>怪物 "+REALM_NAMES[area.erMin]+
+   "~"+REALM_NAMES[Math.min(area.erMax,9)]+"</span>"+
+   "<div class='d'>"+(unlocked?("Boss："+BOSSES[area.boss].name+(S.areaBoss[area.id]?"（已斬）":"")):
+     ("🔒 "+areaReq(area)))+"</div>"+
+   "<div class='pb'><i style='width:"+(pct*100)+"%'></i></div>"+
+   "<div style='font-size:10px;color:var(--c-sub);margin-top:3px'>清理度 "+Math.floor(pct*100)+"%"+
+   (pct>=0.8?"｜已解鎖下一區":"")+"</div>";
+  if(unlocked)card.addEventListener("click",()=>enterExplore(area.id));
+  else card.addEventListener("click",()=>modal("尚未解鎖",areaReq(area),[{t:"知道了",f:closeModal}]));
+  wrap.appendChild(card);});}
+
+/* =====================================================================
+   20. 通用彈窗
+   ===================================================================== */
+function modal(title,body,btns){const card=$("xx-modal-card");
+ card.innerHTML="<h3>"+title+"</h3><p>"+body+"</p>";
+ const wrap=document.createElement("div");wrap.className="btns";
+ btns.forEach(b=>{const el=document.createElement("button");
+  el.className="xx-btn"+(b.gold?" gold":"");el.textContent=b.t;
+  if(b.disabled)el.disabled=true;el.onclick=b.f;wrap.appendChild(el);});
+ card.appendChild(wrap);$("xx-modal").classList.add("on");}
+function closeModal(){$("xx-modal").classList.remove("on");}
+function updateDailyTip(){refreshDaily();
+ const undone=QUEST_DEFS.filter(q=>!S.daily.quests[q.id].claimed).length;
+ $("xx-daily-tip").textContent="📜 今日尚有 "+undone+" 項任務未領｜連續登入第 "+S.login.streak+" 天"+
+  (S.login.claimedToday?"（已領）":"（可領取）");}
+
+/* =====================================================================
+   21. 探索控制（pointer events，觸控+滑鼠通吃）
+   ===================================================================== */
+const joy={active:false,baseX:0,baseY:0,dx:0,dy:0};
+const joyEl=$("xx-joy"),stickEl=$("xx-joy-stick");
+function joyStart(e){const r=joyEl.getBoundingClientRect();joy.active=true;
+ joy.baseX=r.left+r.width/2;joy.baseY=r.top+r.height/2;joyMove(e);}
+function joyMove(e){if(!joy.active)return;
+ let dx=e.clientX-joy.baseX,dy=e.clientY-joy.baseY;
+ const len=Math.hypot(dx,dy),max=50;if(len>max){dx=dx/len*max;dy=dy/len*max;}
+ joy.dx=len<12?0:dx/max;joy.dy=len<12?0:dy/max;
+ stickEl.style.transform="translate("+dx+"px,"+dy+"px)";}
+function joyEnd(){joy.active=false;joy.dx=0;joy.dy=0;stickEl.style.transform="";}
+joyEl.addEventListener("pointerdown",e=>{e.preventDefault();try{joyEl.setPointerCapture(e.pointerId);}catch(x){}joyStart(e);});
+joyEl.addEventListener("pointermove",e=>{if(joy.active)joyMove(e);});
+joyEl.addEventListener("pointerup",joyEnd);joyEl.addEventListener("pointercancel",joyEnd);
+
+let atkHold=false;const atkEl=$("xx-atk");
+atkEl.addEventListener("pointerdown",e=>{e.preventDefault();atkHold=true;doAttack();});
+atkEl.addEventListener("pointerup",()=>atkHold=false);
+atkEl.addEventListener("pointercancel",()=>atkHold=false);
+for(let i=0;i<4;i++)$("xx-s"+i).addEventListener("pointerdown",e=>{e.preventDefault();useSkill(i);});
+
+const keys={};
+window.addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=true;
+ if(MODE==="explore"){const k=e.key.toLowerCase();
+  if(e.key===" "||k==="j")doAttack();
+  if(k==="q")useSkill(0);if(k==="e")useSkill(1);if(k==="r")useSkill(2);if(k==="f")useSkill(3);}});
+window.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
+function keyboardMove(){let dx=0,dy=0;
+ if(keys["w"]||keys["arrowup"])dy-=1;if(keys["s"]||keys["arrowdown"])dy+=1;
+ if(keys["a"]||keys["arrowleft"])dx-=1;if(keys["d"]||keys["arrowright"])dx+=1;
+ const l=Math.hypot(dx,dy);if(l>0){dx/=l;dy/=l;}return{dx,dy};}
+
+let nearestInteract=null;
+$("xx-interact").addEventListener("click",()=>{if(nearestInteract)doInteract(nearestInteract);});
+function clampPlayer(){const b=world.area.bounds;
+ player.wx=clamp(player.wx,0.5,b.w-0.5);player.wy=clamp(player.wy,0.5,b.h-0.5);}
+
+function doInteract(ent){
+ if(ent.type==="portal"){
+  if(ent.target==="home"){exitExplore(true);return;}
+  const ta=AREAS.find(a=>a.id===ent.target);
+  if(!areaUnlocked(ta)){modal("傳送陣未啟動","需求："+areaReq(ta),[{t:"知道了",f:closeModal}]);return;}
+  modal("傳送至 "+ta.name+"？","踏入法陣，前往更深之地。",
+   [{t:"取消",f:closeModal},{t:"傳送",gold:true,f:()=>{closeModal();transition(()=>enterExplore(ta.id));}}]);
+ }else if(ent.type==="chest"&&!ent.opened){ent.opened=true;
+  if(!S.areaClear[world.area.id])S.areaClear[world.area.id]={kinds:{},chests:0};
+  S.areaClear[world.area.id].chests=(S.areaClear[world.area.id].chests||0)+1;
+  const g=Math.round(80*Math.pow(1.8,S.realm));S.stones+=g;const p=iso(ent.wx,ent.wy);
+  floatText("寶箱：+"+fmt(g)+" 靈石",p.x,p.y-30,"#6ee787",15);
+  for(let i=0;i<12;i++)spawnParticle(p.x,p.y-10,rand(-80,80),rand(-100,-20),0.6,"#f5d27a",3,150);
+  if(Math.random()<0.4){const t=rollRareDropTier({elite:true});
+   addItem("treasure","drop"+t,1,{name:RARITY_NAMES[t-1]+"掉落",emoji:"✨"});rareDropShow(t);}
+  updateAreaClearAndUnlock();saveGame();
+ }else if(ent.type==="herb"){ent.gone=true;const p=iso(ent.wx,ent.wy);
+  addItem("herb","herb"+herbGrade(),2);floatText("採到靈草 ×2",p.x,p.y-30,"#6ee787",14);saveGame();
+ }else if(ent.type==="enc"&&!ent.done){ent.done=true;runEncounter(iso(ent.wx,ent.wy));
+ }else if(ent.type==="npc"){const p=iso(ent.wx,ent.wy);player.hp=playerMaxHp();
+  floatText("補給：氣血全滿",p.x,p.y-30,"#7df0da",14);}
+}
+function runEncounter(sp){const ev=ENCOUNTERS[Math.floor(Math.random()*ENCOUNTERS.length)];FX.flash=0.4;
+ if(ev.k==="good"){for(let i=0;i<20;i++)spawnParticle(sp.x,sp.y-10,rand(-100,100),rand(-140,-20),0.8,"#7df0da",3,150);
+  const g=Math.round(50*Math.pow(1.8,S.realm));S.stones+=g;
+  if(ev.t==="靈泉沐浴")S.breakBonus=Math.min(0.3,S.breakBonus+0.05);
+  modal("✨ "+ev.t,ev.d+"<br><b style='color:#6ee787'>+"+fmt(g)+" 靈石"+
+   (ev.t==="靈泉沐浴"?"，下次突破成功率 +5%":"")+"</b>",[{t:"妙啊",gold:true,f:closeModal}]);
+ }else if(ev.k==="bad"){for(let i=0;i<16;i++)spawnParticle(sp.x,sp.y-10,rand(-100,100),rand(-40,40),0.6,"#ff5a6a",3);
+  shake(5);const loss=Math.min(S.stones,Math.round(30*Math.pow(1.6,S.realm)));S.stones-=loss;
+  if(ev.t==="走火入魔"&&sessionActive)player.hp=Math.max(1,player.hp*0.5);
+  modal("⚠️ "+ev.t,ev.d+"<br><b style='color:#ff6b6b'>-"+fmt(loss)+" 靈石</b>",[{t:"晦氣",f:closeModal}]);
+ }else{modal("❓ "+ev.t,ev.d,
+   [{t:"賭一把(±靈石)",gold:true,f:()=>{const win=Math.random()<0.5,amt=Math.round(40*Math.pow(1.7,S.realm));
+     if(win){S.stones+=amt*2;floatText("+"+fmt(amt*2)+" 靈石",W/2,H*0.4,"#6ee787",16);}
+     else{const l=Math.min(S.stones,amt);S.stones-=l;floatText("-"+fmt(l)+" 靈石",W/2,H*0.4,"#ff6b6b",16);}
+     closeModal();saveGame();}},{t:"算了",f:closeModal}]);}
+ saveGame();}
+
+let trans=0,transCb=null;
+function transition(cb){trans=1;transCb=cb;}
+
+/* =====================================================================
+   22. 渲染：等角地圖（地面 + 實體 z-order）
+   ===================================================================== */
+function renderExplore(){
+ const area=world.area;
+ const rawX=(player.wx-player.wy)*TILE_W/2,rawY=(player.wx+player.wy)*TILE_H/2;
+ cam.tx=W/2-rawX;cam.ty=H*0.5-rawY;
+ cam.x+=(cam.tx-cam.x)*0.15;cam.y+=(cam.ty-cam.y)*0.15;
+ const bg=ctx.createLinearGradient(0,0,0,H);
+ bg.addColorStop(0,shade(area.theme,-0.7));bg.addColorStop(1,"#0a0810");
+ ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+ // 地磚
+ const b=area.bounds,cx=Math.round(player.wx),cy=Math.round(player.wy),R=12;
+ for(let x=cx-R;x<=cx+R;x++)for(let y=cy-R;y<=cy+R;y++){
+  if(x<0||y<0||x>=b.w||y>=b.h)continue;const p=iso(x+0.5,y+0.5);
+  if(p.x<-TILE_W||p.x>W+TILE_W||p.y<-TILE_H||p.y>H+TILE_H)continue;
+  ctx.fillStyle=((x+y)&1)?area.ground[0]:area.ground[1];
+  ctx.beginPath();ctx.moveTo(p.x,p.y-TILE_H/2);ctx.lineTo(p.x+TILE_W/2,p.y);
+  ctx.lineTo(p.x,p.y+TILE_H/2);ctx.lineTo(p.x-TILE_W/2,p.y);ctx.closePath();ctx.fill();}
+ // 收集排序
+ const drawList=[];
+ world.entities.forEach(e=>{if(e.gone)return;if(e.type==="mob"&&e.dead)return;drawList.push({wy:e.wy,e});});
+ world.drops.forEach(d=>drawList.push({wy:d.wy,drop:d}));
+ drawList.push({wy:player.wy,player:true});
+ drawList.sort((a,b)=>a.wy-b.wy);
+ nearestInteract=null;let nearestDist=1.6;
+ drawList.forEach(item=>{
+  if(item.player){const p=iso(player.wx,player.wy);
+   drawSwordsman(p.x,p.y,1.1,player.facing,
+    {swing:player.attacking>0?(0.2-player.attacking)/0.2:0,flash:player.hurtFlash});
+   if(player.invuln>0){ctx.save();ctx.globalAlpha=.3;ctx.fillStyle="#7df0da";
+    ctx.beginPath();ctx.arc(p.x,p.y-14,20,0,7);ctx.fill();ctx.restore();}return;}
+  if(item.drop){const d=item.drop,p=iso(d.wx,d.wy),bob=Math.sin(performance.now()/200+d.t*5)*3;
+   ctx.font="18px serif";ctx.textAlign="center";ctx.fillText(d.emoji,p.x,p.y-10+bob);ctx.textAlign="left";return;}
+  const e=item.e,p=iso(e.wx,e.wy);
+  if(e.type==="mob"){drawMob(e,p.x,p.y);
+   if(e.boss&&!e.tauntShown){if(Math.hypot(e.wx-player.wx,e.wy-player.wy)<6){e.tauntShown=true;
+    banner("⚔️ "+e.def.name,"#ff5a6a");floatText(e.def.taunt.slice(0,18)+"…",p.x,p.y-50,"#ffb3b3",12);}}}
+  else drawEntity(e,p);
+  if(e.type==="portal"||e.type==="chest"||e.type==="herb"||e.type==="enc"||e.type==="npc"){
+   if(e.type==="chest"&&e.opened)return;if(e.type==="enc"&&e.done)return;
+   const d=Math.hypot(e.wx-player.wx,e.wy-player.wy);if(d<nearestDist){nearestDist=d;nearestInteract=e;}}
+ });
+ const ib=$("xx-interact");
+ if(nearestInteract&&sessionActive){ib.style.display="block";
+  ib.textContent=nearestInteract.type==="portal"?(nearestInteract.label||"傳送"):
+   nearestInteract.type==="chest"?"開寶箱":nearestInteract.type==="herb"?"採靈草":
+   nearestInteract.type==="enc"?"探查奇遇":"補給";}
+ else ib.style.display="none";
+ drawEffects();drawParticles();
+ if(FX.goldBeam>0){const p=iso(player.wx,player.wy);ctx.save();ctx.globalAlpha=FX.goldBeam;
+  const g=ctx.createLinearGradient(p.x,0,p.x,p.y);
+  g.addColorStop(0,"rgba(245,210,122,0)");g.addColorStop(1,"rgba(245,210,122,.9)");
+  ctx.fillStyle=g;ctx.fillRect(p.x-26,0,52,p.y);
+  ctx.globalAlpha=FX.goldBeam*0.5;ctx.fillStyle="#000";ctx.fillRect(0,0,W,H);
+  ctx.globalCompositeOperation="destination-out";
+  const rg=ctx.createRadialGradient(p.x,p.y-14,10,p.x,p.y-14,120);
+  rg.addColorStop(0,"#fff");rg.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle=rg;ctx.beginPath();ctx.arc(p.x,p.y-14,120,0,7);ctx.fill();ctx.restore();}
+ drawMinimap();
+}
+function drawEntity(e,p){const t=performance.now()/1000;
+ if(e.type==="portal"){const glow=e.glow?0.9:0.5;
+  ctx.save();ctx.globalAlpha=glow*(0.6+0.4*Math.sin(t*3));
+  const g=ctx.createRadialGradient(p.x,p.y,2,p.x,p.y,40);
+  g.addColorStop(0,e.target==="home"?"#7df0da":"#f5d27a");g.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(p.x,p.y,40,20,0,0,7);ctx.fill();ctx.restore();
+  ctx.strokeStyle=e.target==="home"?"#7df0da":"#f5d27a";ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(p.x,p.y,30,15,0,0,7);ctx.stroke();
+  ctx.font="22px serif";ctx.textAlign="center";ctx.fillText(e.target==="home"?"🏠":"🌀",p.x,p.y-18);ctx.textAlign="left";
+ }else if(e.type==="chest"){ctx.font="26px serif";ctx.textAlign="center";
+  ctx.fillText(e.opened?"📭":"🎁",p.x,p.y-12);ctx.textAlign="left";
+ }else if(e.type==="herb"){ctx.font="22px serif";ctx.textAlign="center";ctx.fillText("🌿",p.x,p.y-10);ctx.textAlign="left";
+ }else if(e.type==="enc"){ctx.save();ctx.globalAlpha=0.5+0.5*Math.sin(t*4);
+  ctx.font="24px serif";ctx.textAlign="center";ctx.fillText("✨",p.x,p.y-12);ctx.restore();ctx.textAlign="left";
+ }else if(e.type==="npc"){ctx.font="26px serif";ctx.textAlign="center";ctx.fillText("🧙",p.x,p.y-12);
+  ctx.font="11px serif";ctx.fillStyle="#cbb8ee";ctx.fillText("補給",p.x,p.y+6);ctx.textAlign="left";}
+}
+function shade(hex,amt){const c=hex.replace("#","");
+ let r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),bl=parseInt(c.slice(4,6),16);
+ r=clamp(Math.round(r+r*amt),0,255);g=clamp(Math.round(g+g*amt),0,255);bl=clamp(Math.round(bl+bl*amt),0,255);
+ return "rgb("+r+","+g+","+bl+")";}
+function drawMinimap(){mctx.clearRect(0,0,74,74);
+ const b=world.area.bounds,sx=74/b.w,sy=74/b.h;
+ mctx.fillStyle="rgba(0,0,0,.4)";mctx.fillRect(0,0,74,74);
+ world.entities.forEach(e=>{if(e.gone||(e.type==="mob"&&e.dead))return;let col=null;
+  if(e.type==="mob")col=e.boss?"#ff5a6a":e.elite?"#f5d27a":"#aa6";
+  else if(e.type==="portal")col=e.target==="home"?"#7df0da":"#f5d27a";
+  else if(e.type==="chest"&&!e.opened)col="#e0a93b";
+  if(col){mctx.fillStyle=col;mctx.fillRect(e.wx*sx-1,e.wy*sy-1,2.5,2.5);}});
+ mctx.fillStyle="#fff";mctx.beginPath();mctx.arc(player.wx*sx,player.wy*sy,2.5,0,7);mctx.fill();}
+
+/* =====================================================================
+   23. 打坐/煉丹/拍賣 的 canvas 背景畫面
+   ===================================================================== */
+function renderMeditateScene(){
+ const g=ctx.createLinearGradient(0,0,0,H);
+ g.addColorStop(0,"#1a1438");g.addColorStop(0.6,"#0f0b24");g.addColorStop(1,"#0a0814");
+ ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.fillStyle="rgba(255,255,255,.5)";
+ for(let i=0;i<30;i++){const x=(i*97)%W,y=(i*53)%(H*0.4);
+  ctx.globalAlpha=0.3+0.3*Math.sin(performance.now()/600+i);ctx.fillRect(x,y,1.5,1.5);}
+ ctx.globalAlpha=1;
+ ctx.fillStyle="#15102a";ctx.beginPath();ctx.moveTo(0,H*0.6);
+ for(let x=0;x<=W;x+=40)ctx.lineTo(x,H*0.6-Math.sin(x*0.01)*30-20);
+ ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+ const cxp=W/2,cyp=H*0.6;
+ ctx.fillStyle="#2a2038";ctx.beginPath();ctx.ellipse(cxp,cyp+30,70,22,0,0,7);ctx.fill();
+ ctx.fillStyle="#8b3a3a";ctx.beginPath();ctx.ellipse(cxp,cyp+26,46,14,0,0,7);ctx.fill();
+ if(Math.random()<0.6){const ang=rand(0,7),rr=rand(80,140);
+  spawnParticle(cxp+Math.cos(ang)*rr,cyp+Math.sin(ang)*rr*0.6,0,0,1.2,"#7df0da",2.5);}
+ particles.forEach(p=>{const dx=cxp-p.x,dy=(cyp-10)-p.y;p.vx+=dx*0.6;p.vy+=dy*0.6;});
+ drawParticles();
+ const cap=breakCost(),pr=clamp(S.qi/cap,0,1);
+ ctx.save();ctx.translate(cxp,cyp-10);
+ ctx.strokeStyle="#2a2238";ctx.lineWidth=6;ctx.beginPath();ctx.arc(0,0,52,0,7);ctx.stroke();
+ ctx.strokeStyle=pr>=1?"#f5d27a":"#7df0da";ctx.lineWidth=6;ctx.lineCap="round";
+ ctx.beginPath();ctx.arc(0,0,52,-Math.PI/2,-Math.PI/2+pr*Math.PI*2);ctx.stroke();
+ if(pr>=1){ctx.globalAlpha=0.4+0.4*Math.sin(performance.now()/200);
+  ctx.strokeStyle="#ffd86b";ctx.lineWidth=10;ctx.beginPath();ctx.arc(0,0,52,0,7);ctx.stroke();}
+ ctx.restore();
+ drawSwordsman(cxp,cyp-2,1.25,1,{swing:0});
+ if(breakAnim>0){ctx.save();ctx.globalAlpha=breakAnim/1.2;
+  const bg2=ctx.createLinearGradient(cxp,0,cxp,cyp);
+  bg2.addColorStop(0,"rgba(245,210,122,0)");bg2.addColorStop(1,"rgba(245,210,122,.9)");
+  ctx.fillStyle=bg2;ctx.fillRect(cxp-30,0,60,cyp);ctx.restore();}
+}
+function renderAlchemyScene(){
+ const g=ctx.createLinearGradient(0,0,0,H);
+ g.addColorStop(0,"#1a1010");g.addColorStop(1,"#0a0606");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle="rgba(120,80,40,.3)";ctx.lineWidth=1;
+ for(let x=20;x<W-40;x+=44)for(let y=70;y<H*0.36;y+=40){ctx.strokeRect(x,y,40,36);
+  ctx.font="16px serif";ctx.fillText("🌿",x+11,y+25);}
+ const cxp=W/2,cyp=H*0.62;
+ ctx.fillStyle="#3a2a1a";ctx.beginPath();ctx.ellipse(cxp,cyp+40,52,16,0,0,7);ctx.fill();
+ ctx.fillStyle="#5a4530";ctx.beginPath();ctx.moveTo(cxp-44,cyp+10);
+ ctx.quadraticCurveTo(cxp,cyp+60,cxp+44,cyp+10);ctx.lineTo(cxp+38,cyp-26);ctx.lineTo(cxp-38,cyp-26);ctx.closePath();ctx.fill();
+ ctx.strokeStyle="#f5d27a";ctx.lineWidth=2;ctx.stroke();
+ ctx.fillStyle="#1a0e08";ctx.beginPath();ctx.ellipse(cxp,cyp-26,38,11,0,0,7);ctx.fill();
+ ctx.strokeStyle="#5a4530";ctx.lineWidth=5;
+ [-30,0,30].forEach(dx=>{ctx.beginPath();ctx.moveTo(cxp+dx,cyp+30);ctx.lineTo(cxp+dx*1.2,cyp+54);ctx.stroke();});
+ if(S.alc){for(let i=0;i<3;i++)spawnParticle(cxp+rand(-30,30),cyp-26,rand(-15,15),rand(-90,-40),0.5,
+   ["#ff6b2c","#ffb347","#ffd86b"][i%3],4,80);
+  ctx.save();ctx.globalAlpha=0.5+0.3*Math.sin(performance.now()/300);
+  const fg=ctx.createRadialGradient(cxp,cyp-26,2,cxp,cyp-26,40);
+  fg.addColorStop(0,"rgba(255,180,60,.8)");fg.addColorStop(1,"rgba(255,180,60,0)");
+  ctx.fillStyle=fg;ctx.beginPath();ctx.arc(cxp,cyp-26,40,0,7);ctx.fill();ctx.restore();}
+ drawParticles();
+ if(alcOpenFx){alcOpenFx.t-=1/60;ctx.save();
+  ctx.globalAlpha=clamp(alcOpenFx.t,0,1);ctx.font="34px serif";ctx.textAlign="center";
+  ctx.fillText("💊",cxp,cyp-50-(0.9-alcOpenFx.t)*40);
+  ctx.fillStyle=RARITY_COLOR[alcOpenFx.tier-1];ctx.font="bold 18px serif";
+  ctx.fillText(RARITY_NAMES[alcOpenFx.tier-1]+"丹成！",cxp,cyp-100);
+  ctx.textAlign="left";ctx.restore();if(alcOpenFx.t<=0)alcOpenFx=null;}
+}
+function renderAuctionScene(){
+ const g=ctx.createLinearGradient(0,0,0,H);
+ g.addColorStop(0,"#1c1228");g.addColorStop(1,"#0c0814");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.fillStyle="#5a1e28";ctx.beginPath();ctx.moveTo(W*0.4,H*0.4);ctx.lineTo(W*0.6,H*0.4);
+ ctx.lineTo(W*0.85,H*0.78);ctx.lineTo(W*0.15,H*0.78);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#2a2038";ctx.fillRect(W*0.12,H*0.25,18,H*0.3);ctx.fillRect(W*0.85,H*0.25,18,H*0.3);
+ const ax=W/2,ay=H*0.34;ctx.font="38px serif";ctx.textAlign="center";ctx.fillText("🤵",ax,ay);
+ ctx.save();ctx.translate(ax+22,ay-18);ctx.rotate(Math.sin(performance.now()/250)*0.4);
+ ctx.font="20px serif";ctx.fillText("🔨",0,0);ctx.restore();
+ for(let i=0;i<4;i++){const bx=W*0.2+i*W*0.18;
+  ctx.fillStyle="#1a1024";ctx.beginPath();ctx.ellipse(bx,H*0.66,14,18,0,0,7);ctx.fill();
+  ctx.font="20px serif";ctx.fillStyle="#fff";ctx.fillText("🧝",bx,H*0.66);}
+ if(auc&&auc.item){ctx.font="40px serif";ctx.fillText(auc.item.tr.emoji,ax,H*0.5);
+  ctx.save();ctx.globalAlpha=0.4+0.3*Math.sin(performance.now()/300);
+  const tg=ctx.createRadialGradient(ax,H*0.5,3,ax,H*0.5,40);
+  tg.addColorStop(0,RARITY_COLOR[auc.rarityIdx+1]);tg.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle=tg;ctx.beginPath();ctx.arc(ax,H*0.5,40,0,7);ctx.fill();ctx.restore();}
+ ctx.textAlign="left";drawParticles();
+}
+
+/* =====================================================================
+   24. 主迴圈（單一 RAF；背景暫停；計時器不疊加）
+   ===================================================================== */
+let lastFrame=performance.now(),saveTick=0,idleAcc=0;
+function loop(now){
+ requestAnimationFrame(loop);
+ let dt=(now-lastFrame)/1000;lastFrame=now;if(dt>0.1)dt=0.1;
+ if(paused)return; // 背景暫停：不結算戰鬥、不掉數值
+ if(FX.hitstop>0){FX.hitstop-=dt*1000;if(FX.hitstop>0){renderCurrent();return;}}
+ let speed=1;if(FX.slowmo>0){FX.slowmo-=dt*1000;speed=0.35;}
+ const sdt=dt*speed;
+ // 計時器（與場景無關）
+ tickIdle(dt);tickAlchemy();
+ for(let i=0;i<4;i++)if(skillCd[i]>0)skillCd[i]=Math.max(0,skillCd[i]-dt);
+ if(player.atkTimer>0)player.atkTimer=Math.max(0,player.atkTimer-dt);
+ if(player.attacking>0)player.attacking=Math.max(0,player.attacking-dt);
+ if(player.invuln>0)player.invuln=Math.max(0,player.invuln-sdt);
+ if(player.hurtFlash>0)player.hurtFlash=Math.max(0,player.hurtFlash-dt*4);
+ if(breakAnim>0)breakAnim=Math.max(0,breakAnim-dt);
+ if(FX.shake>0)FX.shake=Math.max(0,FX.shake-dt*30);
+ if(FX.goldBeam>0)FX.goldBeam=Math.max(0,FX.goldBeam-dt*1.2);
+ if(FX.flash>0)FX.flash=Math.max(0,FX.flash-dt*1.5);
+ if(combo.timer>0){combo.timer-=dt;if(combo.timer<=0){combo.n=0;$("xx-combo").style.display="none";}}
+ if(streak.timer>0){streak.timer-=dt;if(streak.timer<=0){streak.n=0;streak.atkBuff=0;}}
+ updateParticles(sdt);updateEffects(sdt);
+ if(MODE==="explore"&&sessionActive){
+  let mvx=joy.dx,mvy=joy.dy;const kb=keyboardMove();if(kb.dx||kb.dy){mvx=kb.dx;mvy=kb.dy;}
+  if(mvx||mvy){const wdir=screenDirToWorld(mvx,mvy),wl=Math.hypot(wdir.x,wdir.y)||1;
+   const sp=COMBAT.moveSpeed*sdt/(TILE_W/2);
+   player.wx+=wdir.x/wl*sp;player.wy+=wdir.y/wl*sp;player.dir={x:wdir.x/wl,y:wdir.y/wl};
+   player.facing=(wdir.x-wdir.y)>=0?1:-1;clampPlayer();}
+  if(atkHold)doAttack();updateMobs(sdt);updateDrops(sdt);updateSwordArrays(sdt);}
+ if(trans>0){trans-=dt*2;if(trans<=0.5&&transCb){transCb();transCb=null;}}
+ renderCurrent();updateHUD();
+ saveTick+=dt;if(saveTick>3){saveTick=0;saveGame();}
+}
+function tickIdle(dt){idleAcc+=dt; // 打坐：每秒加靈氣（在線全速，任何場景都算）
+ if(idleAcc>=1){const sec=Math.floor(idleAcc);idleAcc-=sec;addQi(curRealm().idle*sec);}}
+function renderCurrent(){
+ ctx.clearRect(0,0,W,H);ctx.save();
+ if(FX.shake>0)ctx.translate(rand(-FX.shake,FX.shake),rand(-FX.shake,FX.shake));
+ if(MODE==="explore"){renderExplore();}
+ else if(SUB==="meditate"){renderMeditateScene();}
+ else if(SUB==="alchemy"){renderAlchemyScene();}
+ else if(SUB==="auction"){renderAuctionScene();}
+ else{const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#171221");g.addColorStop(1,"#0a0814");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);}
+ ctx.restore();
+ if(FX.flash>0){ctx.save();ctx.globalAlpha=FX.flash;ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);ctx.restore();}
+ updateSkillUI();
+}
+function updateSkillUI(){for(let i=0;i<4;i++){const sk=SKILLS[i],el=$("xx-s"+i);
+ const cdEl=el.querySelector(".cd"),cdt=el.querySelector(".cdt");
+ if(skillCd[i]>0){const ratio=skillCd[i]/(sk.cd/1000);
+  cdEl.style.setProperty("--cd",(ratio*360)+"deg");cdt.textContent=Math.ceil(skillCd[i]);}
+ else{cdEl.style.setProperty("--cd","0deg");cdt.textContent="";}
+ el.classList.toggle("dim",S.qi<sk.qi);}}
+
+/* =====================================================================
+   25. 啟動
+   ===================================================================== */
 function init(){
-  load();
-  applyOffline();
-  player.hp=playerMaxHp();
-  setupMeditate();
-  setupEvent();
-  setupAlchemy();
-  setupAuction();
-  setupControls();
-  setupTabs();
-  resizeCanvas();
-  refreshAll();
-  renderBag();
-  // 桌機隱藏搖桿提示（用鍵盤）
-  if(!('ontouchstart' in window)){
-    $("xx-joy").title="桌機可用 WASD / 方向鍵移動，J/空白普攻，Q/E/R 技能";
-  }
-  rafId=requestAnimationFrame(loop);
+ enforceMonotonic(); // 開機先建立／套用進度水位，杜絕載入到倒退存檔
+ resize();refreshDaily();
+ const off=(Date.now()-(S.lastSave||Date.now()))/1000;if(off>5)applyOffline(off);
+ player.maxHp=playerMaxHp();player.hp=playerMaxHp();
+ gotoScene("home");updateHUD();requestAnimationFrame(loop);
+ if(!S.pickedMeditate&&S.realm===0&&S.qi===0){
+  setTimeout(()=>modal("散修崛起 · 開局",
+   "你本是凡塵散修，一卷殘訣、一塊靈石起步。<br><br>"+
+   "🧘 先去<b>打坐</b>攢靈氣（約 20 秒可第一次突破）<br>"+
+   "⚔️ 再去<b>歷練</b>探索打怪，掉靈石靈草<br>"+
+   "⚗️ 用靈草<b>煉丹</b>賭稀有度、🏛️ <b>拍賣</b>撿漏<br><br>"+
+   "進歷練後切頁=暫停，數值絕不倒退，放膽闖。",
+   [{t:"開始修行！",gold:true,f:closeModal}]),400);}
 }
-
-// 對外暴露給 inline onclick 用
-window.__xx={ closeModal:closeModal };
-
-// 等 DOM 與佈局就緒
-if(document.readyState==="complete"||document.readyState==="interactive"){ setTimeout(init,60); }
-else document.addEventListener("DOMContentLoaded",function(){ setTimeout(init,60); });
-
+init();
 })();
 </script>
 
