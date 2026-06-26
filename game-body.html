@@ -1639,7 +1639,7 @@ function renderCurrent(){
  ctx.clearRect(0,0,W,H);ctx.save();
  if(FX.shake>0)ctx.translate(rand(-FX.shake,FX.shake),rand(-FX.shake,FX.shake));
  if(MODE==="explore"){renderExplore();}
- else if(SUB==="meditate"){renderMeditateScene();}
+ else if(SUB==="meditate"){renderMeditateScene();renderMeditate();}
  else if(SUB==="alchemy"){renderAlchemyScene();}
  else if(SUB==="auction"){renderAuctionScene();}
  else{const g=ctx.createLinearGradient(0,0,0,H);
