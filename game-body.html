@@ -29,7 +29,9 @@
 /* ===== 頂部狀態列 ===== */
 #xx-top{position:absolute;top:0;left:0;right:0;z-index:20;padding:8px 12px;
   background:linear-gradient(180deg,rgba(13,11,20,.92),rgba(13,11,20,.0));
-  pointer-events:none;}
+  pointer-events:none;display:none;}
+/* 靈氣/血條 HUD 只在「歷練 / 打坐 / 拍賣」出現，其餘頁面收起來不擋眼 */
+#xx-root.in-explore #xx-top,#xx-root.show-hud #xx-top{display:block;}
 #xx-top .row{display:flex;align-items:center;gap:8px;pointer-events:auto;}
 #xx-realm{font-weight:800;font-size:15px;color:var(--c-gold);text-shadow:0 1px 4px #000;
   white-space:nowrap;}
@@ -219,7 +221,8 @@
   <!-- ===== 場景：洞府 HOME ===== -->
   <div class="xx-scene" id="sc-home">
     <h2>🏔️ 洞府</h2>
-    <div class="hint">道友，今日打算做點什麼？（最下方分頁可隨時切換）</div>
+    <div class="hint">道友，今日打算做點什麼？（最下方分頁可隨時切換）<br>
+      👉 <b style="color:var(--c-gold)">新手指引</b>：先去 <b style="color:var(--c-gold)">⚔️ 歷練</b> 打怪、採靈草、賺靈石，<br>之後才能 ⚗️ 煉丹、🏛️ 逛拍賣行喔！打坐則隨時掛著攢靈氣突破。</div>
     <div class="xx-scroll" style="display:flex;flex-direction:column;gap:9px;">
       <button class="xx-btn gold big" data-go="meditate">🧘 打坐修煉（攢靈氣突破）</button>
       <button class="xx-btn big" data-go="explore-menu">⚔️ 出洞歷練（探索打怪）</button>
@@ -897,6 +900,7 @@ function setTab(active){document.querySelectorAll("#xx-tabs button").forEach(b=>
 function gotoScene(name){
  if(name==="explore-menu")buildAreaList();
  SUB=name;MODE="home";root.classList.remove("in-explore");
+ root.classList.toggle("show-hud", name==="meditate"||name==="auction");
  showScene(name);setTab(name);
  if(name==="meditate"){S.pickedMeditate=true;renderMeditate();}
  if(name==="alchemy")renderAlchemy();
