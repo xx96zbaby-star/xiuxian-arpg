@@ -259,7 +259,7 @@
   <!-- ===== 場景：煉丹 ALCHEMY ===== -->
   <div class="xx-scene" id="sc-alchemy" style="background:none;">
     <h2>⚗️ 丹房</h2>
-    <div class="hint" id="xx-alc-hint">投入靈草，丹爐起火，賭一爐稀有度。</div>
+    <div class="hint" id="xx-alc-hint">玩法：①「◀換丹方▶」選丹 → ② 備齊該階靈草 ×3（靈草去 <b style="color:var(--c-gold)">⚔️ 歷練</b>打怪掉）→ ③「🔥開爐」等候 → ④ 開出隨機稀有度丹藥，吃丹加修為！</div>
     <div style="flex:1;"></div>
     <div id="xx-alc-panel" style="background:rgba(20,15,30,.6);border:1px solid var(--c-line);
       border-radius:12px;padding:12px;">
@@ -908,6 +908,7 @@ function gotoScene(name){
  if(name==="explore-menu")buildAreaList();
  SUB=name;MODE="home";root.classList.remove("in-explore");
  root.classList.toggle("show-hud", name==="meditate"||name==="auction");
+ $("xx-interact").style.display="none"; // 收起探索的互動鈕，免得卡在選單頁擋住按鈕
  showScene(name);setTab(name);
  if(name==="meditate"){S.pickedMeditate=true;renderMeditate();}
  if(name==="alchemy")renderAlchemy();
